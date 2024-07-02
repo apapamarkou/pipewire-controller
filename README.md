@@ -57,7 +57,7 @@ To run this application, you need the following dependencies:
     wget https://github.com/yourusername/pipewire_controller/raw/main/pipewire_controller.py -O ~/Applications/pipewire_controller/pipewire_controller.py
     chmod +x ~/Applications/pipewire_controller/pipewire_controller.py
     ```
-    
+
 
 3. **Add to startup:**
 
@@ -78,4 +78,13 @@ For any issues or contributions, please visit the [GitHub repository](https://gi
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+This script is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Feel free to contribute by submitting issues, pull requests, or suggestions.
+
+## Contact
+
+For any questions or support, please open an issue on the repository or contact the script author.
+
