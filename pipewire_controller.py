@@ -61,10 +61,11 @@ class AboutDialog(QDialog):
             "<h2 style='text-align: center;'>Version 1.0</h2>"
             "<p>A system tray icon to controll pipewire</p>"
             "<p>Author <b>Andrianos Papamarkou</b></p>"
-            "<p></p>"
+            "<p><a href='https://github.com/apapamarkou/pipewire_controller'>Visit on GitHub</a></p>"
             )
 
         title_label.setAlignment(Qt.AlignCenter)
+        title_label.setOpenExternalLinks(True)
 
         # Add the labels to the layout
         layout.addWidget(title_label)
