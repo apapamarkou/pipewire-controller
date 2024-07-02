@@ -55,6 +55,7 @@ To run this application, you need the following dependencies:
     ```bash
     mkdir -p ~/Applications/pipewire_controller
     wget https://github.com/apapamarkou/pipewire_controller/raw/main/pipewire_controller.py -O ~/Applications/pipewire_controller/pipewire_controller.py
+    wget https://github.com/apapamarkou/pipewire_controller/raw/main/pipewire-icon.png -O ~/Applications/pipewire_controller/pipewire-icon.png
     chmod +x ~/Applications/pipewire_controller/pipewire_controller.py
     ```
 
