@@ -41,14 +41,13 @@ To run this application, you need the following dependencies:
     sudo eopkg install python3-qt5 pipewire
     ```
 
-    - **Slackware**   
-   You may need to compile PyQt5 and PipeWire from source or find packages suitable for Slackware.
-
-
-    - **Debian, Ubuntu, Mint**
+     - **Debian, Ubuntu, Mint**
     ```bash
     sudo apt-get install python3-pyqt5 pipewire
     ```
+
+   - **Slackware**   
+   You may need to compile PyQt5 and PipeWire from source or find packages suitable for Slackware.
 
 
 2. **Download and set up the script:**
