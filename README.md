@@ -1,12 +1,12 @@
 # PipeWire Controller
 
-A simple to install and use tray icon to control the samplerate and buffersize when using PipeWire.
+A simple to install and use tray icon to control the samplerate and buffersize when using PipeWire audio server.
 
 ## Features
 
 - Change the samplerate and buffer size of PipeWire from a system tray icon.
 - Save and load settings automatically.
-- Support for any Linux desktop environment or window manager.
+- Support for any Linux desktop environment or window manager with a system tray visible.
 
 ## Dependencies
 
@@ -78,13 +78,6 @@ For any issues or contributions, please visit the [GitHub repository](https://gi
 
 ## License
 
-This script is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This script is licensed under the GNU License. See the [LICENSE](LICENSE) file for details.
 
-## Contributing
-
-Feel free to contribute by submitting issues, pull requests, or suggestions.
-
-## Contact
-
-For any questions or support, please open an issue on the repository or contact the script author.
 
