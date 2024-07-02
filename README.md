@@ -1,4 +1,4 @@
-# PipeWire Control
+# PipeWire Controller
 
 A simple to install and use tray icon to control the samplerate and buffersize when using PipeWire.
 
