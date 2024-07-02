@@ -73,11 +73,13 @@ class AboutDialog(QDialog):
         # Set the layout for the dialog
         self.setLayout(layout)
 
+    def closeEvent(self, event):
+        event.ignore()
+        self.hide()
+
 class TrayIconApp(QApplication):
     def __init__(self, argv):
         super().__init__(argv)
-
-        self.setQuitOnLastWindowClosed(False)  # Prevent quitting when the last window is closed
 
         self.settings = load_settings()
 
