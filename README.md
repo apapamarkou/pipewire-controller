@@ -1,5 +1,7 @@
 # PipeWire Controller
 
+![Peek 2024-07-04 02-18](https://github.com/apapamarkou/pipewire_controller/assets/42995877/32536db2-a461-4078-896c-573e77dd7092)
+
 A simple to install and use tray icon to control the samplerate and buffersize when using PipeWire audio server.
 
 ## Features
