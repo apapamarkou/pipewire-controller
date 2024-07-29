@@ -76,8 +76,6 @@ To run this application, you need the following dependencies:
 
 The script is designed to be run as a startup application. Once installed and configured to run at startup, it will provide a tray icon allowing you to adjust the samplerate and buffer size of PipeWire.
 
-For any issues or contributions, please visit the [GitHub repository](https://github.com/yourusername/pipewire_controller).
-
 ## License
 
 This script is licensed under the GNU License. See the [LICENSE](LICENSE) file for details.
