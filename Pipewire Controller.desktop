@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Pipewire Controller
+Comment=Tray Icon to control audio quality
+Exec=/home/andrian/Applications/pipewire_controller/pipewire_controller.py
+Icon=/home/andrian/Applications/pipewire_controller/pipewire-icon.png
+Path=
+Terminal=false
+StartupNotify=false
