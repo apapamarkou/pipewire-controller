@@ -59,7 +59,7 @@ To run this application, you need the following dependencies:
     git clone https://github.com/apapamarkou/pipewire_controller.git ~/Applications/pipewire_controller
     chmod +x ~/Applications/pipewire_controller/pipewire_controller.py
     mkdir -p ~/.local/share/applications
-    cp '~/Applications/pipewire_controller/Pipewire Controller.desktop' ~/.local/share/applications
+    cp ~/Applications/pipewire_controller/PipewireController.desktop ~/.local/share/applications
 
     ```
 
