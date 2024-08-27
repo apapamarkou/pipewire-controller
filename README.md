@@ -58,10 +58,16 @@ To run this application, you need the following dependencies:
     mkdir -p ~/Applications
     git clone https://github.com/apapamarkou/pipewire_controller.git ~/Applications/pipewire_controller
     chmod +x ~/Applications/pipewire_controller/pipewire_controller.py
+    mkdir -p /home/andrian/.local/share/applications
+    cp '/home/andrian/Applications/pipewire_controller/Pipewire Controller.desktop' /home/andrian/.local/share/applications
+
     ```
 
+3. **Add the application to startup:**
 
-3. **Add to startup:**
+Add the application **Pipewire Controller** to your autostart applications.
+
+4. **Or add the script to startup:**
 
     - **KDE Plasma:** Go to `System Settings` -> `Startup and Shutdown` -> `Autostart` -> `Add Login Script` and point to `~/Applications/pipewire_controller/pipewire_controller.py`.
 
@@ -70,7 +76,6 @@ To run this application, you need the following dependencies:
     - **XFCE:** Go to `Session and Startup` -> `Application Autostart`, click `Add`, and enter the command `~/Applications/pipewire_controller/pipewire_controller.py`.
 
     - **i3/Sway:** Add the script to your `~/.config/i3/config` or `~/.config/sway/config` file using `exec --no-startup-id ~/Applications/pipewire_controller/pipewire_controller.py`.
-
 
 ## Running the Script
 
