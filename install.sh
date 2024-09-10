@@ -58,6 +58,7 @@ if [ ! -d "$AUTOSTART_DIR" ]; then
     StartupNotify=true
     " > "$AUTOSTART_DIR/$SCRIPT.desktop"
 
+    mkdir -p "$HOME/.local/share/applications"
     # Create the desktop file in applications
     echo "[Desktop Entry]
     Type=Application
@@ -68,12 +69,12 @@ if [ ! -d "$AUTOSTART_DIR" ]; then
     Terminal=false
     Categories=AudioVideo;Audio;Settings;
     StartupNotify=true
-    " > "$HOME/.local/shar/applications/$SCRIPT.desktop"
+    " > "$HOME/.local/share/applications/$SCRIPT.desktop"
 fi
 
 # Make sure the desktop file is executable
 chmod a+x "$AUTOSTART_DIR/$SCRIPT.desktop"
-chmod a+x  "$HOME/.local/shar/applications/$SCRIPT.desktop"
+chmod a+x  "$HOME/.local/share/applications/$SCRIPT.desktop"
 
 echo "Desktop file created at $AUTOSTART_DIR/$SCRIPT.desktop"
 echo "Installation complete. You can now use the tray icon to control your audio."
