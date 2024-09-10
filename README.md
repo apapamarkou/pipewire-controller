@@ -24,27 +24,27 @@ To run this application, you need the following dependencies:
 ### Examples
     - **Arch Linux, Manjaro, Garuda**
     ```bash
-    sudo pacman -S python-pyqt5 pipewire
+    sudo pacman -S python-pyqt5 pipewire git wget
     ```
 
     - **RedHat, Fedora**
     ```bash
-    sudo dnf install python3-qt5 pipewire
+    sudo dnf install python3-qt5 pipewire git wget
     ```
 
     - **OpenSUSE**
     ```bash
-    sudo zypper install python3-qt5 pipewire
+    sudo zypper install python3-qt5 pipewire git wget
     ```
 
     - **Solus**
     ```bash
-    sudo eopkg install python3-qt5 pipewire
+    sudo eopkg install python3-qt5 pipewire git wget
     ```
 
      - **Debian, Ubuntu, Mint**
     ```bash
-    sudo apt-get install python3-pyqt5 pipewire
+    sudo apt-get install python3-pyqt5 pipewire git wget
     ```
 
 ## How to Install Piewire Controller
