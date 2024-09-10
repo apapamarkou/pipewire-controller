@@ -51,14 +51,14 @@ sudo apt-get install python3-pyqt5 pipewire git wget
 
 ## How to Install Piewire Controller
 
-Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
+Copy the following command, and paste it in a terminal and hit [ENTER]. Thats it!
 ```
 wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/src/pipewire-controller-git-install | bash
 ```
 
 ## How to Uninstall Piewire Controller
 
-Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
+Copy the following command, and paste it in a terminal and hit [ENTER]. Thats it!
 ```
 wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/src/pipewire-controller-git-uninstall | bash
 ```
