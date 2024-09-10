@@ -32,15 +32,15 @@ if [ ! -d "$LOCAL_BIN_DIR" ]; then
     mkdir -p "$LOCAL_BIN_DIR"
 fi
 
-$script="pipewire-controller.py"
+$SCRIPT="pipewire-controller.py"
 
 # Copy script to ~/.local/bin
-cp "$SCRIPT_DIR/src/$script" "$LOCAL_BIN_DIR"
+cp "$SCRIPT_DIR/src/$SCRIPT" "$LOCAL_BIN_DIR"
 # Make sure the script is executable
-chmod a+x "$LOCAL_BIN_DIR/$script"
+chmod a+x "$LOCAL_BIN_DIR/$SCRIPT"
 
 # Copy icon to ~/.local/share/icons
-cp "$SCRIPT_DIR/src/$script.png" "$ICON_DIR"
+cp "$SCRIPT_DIR/src/$SCRIPT.png" "$ICON_DIR"
 
 # Create the ~/.config/autostart directory if it doesn't exist
 if [ ! -d "$AUTOSTART_DIR" ]; then
@@ -51,35 +51,35 @@ if [ ! -d "$AUTOSTART_DIR" ]; then
     Type=Application
     Name=Audio Controller
     Comment=Control your audio
-    Exec=$LOCAL_BIN_DIR/$script
-    Icon=$ICON_DIR/$script.png
+    Exec=$LOCAL_BIN_DIR/$SCRIPT
+    Icon=$ICON_DIR/$SCRIPT.png
     Terminal=false
     Categories=AudioVideo;Audio;Settings;
     StartupNotify=true
-    " > "$AUTOSTART_DIR/$script.desktop"
+    " > "$AUTOSTART_DIR/$SCRIPT.desktop"
 
     # Create the desktop file in applications
     echo "[Desktop Entry]
     Type=Application
     Name=Audio Controller
     Comment=Control your audio
-    Exec=$LOCAL_BIN_DIR/$script
-    Icon=$ICON_DIR/$script.png
+    Exec=$LOCAL_BIN_DIR/$SCRIPT
+    Icon=$ICON_DIR/$SCRIPT.png
     Terminal=false
     Categories=AudioVideo;Audio;Settings;
     StartupNotify=true
-    " > "$HOME/.local/shar/applications/$script.desktop"
+    " > "$HOME/.local/shar/applications/$SCRIPT.desktop"
 fi
 
 # Make sure the desktop file is executable
-chmod a+x "$AUTOSTART_DIR/$script.desktop"
-chmod a+x  "$HOME/.local/shar/applications/$script.desktop"
+chmod a+x "$AUTOSTART_DIR/$SCRIPT.desktop"
+chmod a+x  "$HOME/.local/shar/applications/$SCRIPT.desktop"
 
-echo "Desktop file created at $AUTOSTART_DIR/$script.desktop"
+echo "Desktop file created at $AUTOSTART_DIR/$SCRIPT.desktop"
 echo "Installation complete. You can now use the tray icon to control your audio."
 
 # Run the script
-$LOCAL_BIN_DIR/$script &
+$LOCAL_BIN_DIR/$SCRIPT &
 
 echo "Pipewire Controller has been started."
 echo "Enjoy your audio!"
