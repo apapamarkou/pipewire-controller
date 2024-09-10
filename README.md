@@ -19,10 +19,9 @@ To run this application, you need the following dependencies:
 - PipeWire utilities (`pw-metadata` command)
 
 
-## Installation Instructions
+## How do I install those "dependencies"?
 
-1. **Install dependencies:**
-
+### Examples
     - **Arch Linux, Manjaro, Garuda**
     ```bash
     sudo pacman -S python-pyqt5 pipewire
@@ -48,38 +47,23 @@ To run this application, you need the following dependencies:
     sudo apt-get install python3-pyqt5 pipewire
     ```
 
-   - **Slackware**   
-   You may need to compile PyQt5 and PipeWire from source or find packages suitable for Slackware.
+## How to Install Piewire Controller
 
+    Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
 
-2. **Download and set up the script:**
 
     ```bash
-    mkdir -p ~/Applications
-    git clone https://github.com/apapamarkou/pipewire_controller.git ~/Applications/pipewire_controller
-    chmod +x ~/Applications/pipewire_controller/pipewire_controller.py
-    mkdir -p ~/.local/share/applications
-    cp ~/Applications/pipewire_controller/PipewireController.desktop ~/.local/share/applications
-
+    wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/src/pipewire-controller-git-install | bash
     ```
 
-3. **Add the application to startup:**
+## How to Uninstall Piewire Controller
 
-Add the application **Pipewire Controller** to your autostart applications.
+    Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
 
-4. **Or add the script to startup:**
 
-    - **KDE Plasma:** Go to `System Settings` -> `Startup and Shutdown` -> `Autostart` -> `Add Login Script` and point to `~/Applications/pipewire_controller/pipewire_controller.py`.
-
-    - **GNOME:** Open `Startup Applications`, click `Add`, and point to `~/Applications/pipewire_controller/pipewire_controller.py`.
-
-    - **XFCE:** Go to `Session and Startup` -> `Application Autostart`, click `Add`, and enter the command `~/Applications/pipewire_controller/pipewire_controller.py`.
-
-    - **i3/Sway:** Add the script to your `~/.config/i3/config` or `~/.config/sway/config` file using `exec --no-startup-id ~/Applications/pipewire_controller/pipewire_controller.py`.
-
-## Running the Script
-
-The script is designed to be run as a startup application. Once installed and configured to run at startup, it will provide a tray icon allowing you to adjust the samplerate and buffer size of PipeWire.
+    ```bash
+    wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/src/pipewire-controller-git-uninstall | bash
+    ```
 
 ## License
 
