@@ -17,53 +17,51 @@ To run this application, you need the following dependencies:
 - Python 3
 - PyQt5
 - PipeWire utilities (`pw-metadata` command)
-
+- Git
+- Wget
 
 ## How do I install those "dependencies"?
 
 ### Examples
-    - **Arch Linux, Manjaro, Garuda**
-    ```bash
-    sudo pacman -S python-pyqt5 pipewire git wget
-    ```
 
-    - **RedHat, Fedora**
-    ```bash
-    sudo dnf install python3-qt5 pipewire git wget
-    ```
+**Arch Linux, Manjaro, Garuda**
+```
+sudo pacman -S python-pyqt5 pipewire git wget
+```
 
-    - **OpenSUSE**
-    ```bash
-    sudo zypper install python3-qt5 pipewire git wget
-    ```
+- **RedHat, Fedora** 
+```
+sudo dnf install python3-qt5 pipewire git wget
+```
 
-    - **Solus**
-    ```bash
-    sudo eopkg install python3-qt5 pipewire git wget
-    ```
+- **OpenSUSE** 
+```
+sudo zypper install python3-qt5 pipewire git wget
+```
 
-     - **Debian, Ubuntu, Mint**
-    ```bash
-    sudo apt-get install python3-pyqt5 pipewire git wget
-    ```
+- **Solus** 
+```
+sudo eopkg install python3-qt5 pipewire git wget
+```
+
+- **Debian, Ubuntu, Mint** 
+```
+sudo apt-get install python3-pyqt5 pipewire git wget
+```
 
 ## How to Install Piewire Controller
 
-    Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
-
-
-    ```bash
-    wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/src/pipewire-controller-git-install | bash
-    ```
+Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
+```
+wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/src/pipewire-controller-git-install | bash
+```
 
 ## How to Uninstall Piewire Controller
 
-    Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
-
-
-    ```bash
-    wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/src/pipewire-controller-git-uninstall | bash
-    ```
+Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
+```
+wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/src/pipewire-controller-git-uninstall | bash
+```
 
 ## License
 
