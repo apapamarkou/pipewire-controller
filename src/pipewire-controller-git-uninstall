@@ -19,7 +19,7 @@
 #
 
 REPO_URL="https://github.com/apapamarkou/pipewire-controller.git"
-REPO_DIR="pipewire_controller"
+REPO_DIR="pipewire-controller"
 
 # Clone the repository
 echo "Cloning the repository..."
