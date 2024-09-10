@@ -73,7 +73,6 @@ Categories=AudioVideo;Audio;Settings;
 StartupNotify=true
 " > "$HOME/.local/share/applications/$SCRIPT.desktop"
 
-
 # Make sure the desktop file is executable
 chmod a+x "$AUTOSTART_DIR/$SCRIPT.desktop"
 chmod a+x  "$HOME/.local/share/applications/$SCRIPT.desktop"
@@ -84,5 +83,6 @@ echo "Installation complete. You can now use the tray icon to control your audio
 # Run the script
 $LOCAL_BIN_DIR/$SCRIPT &
 
+rm -rf "$SCRIPT_DIR"
 echo "Pipewire Controller has been started."
 echo "Enjoy your audio!"

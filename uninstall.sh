@@ -38,4 +38,7 @@ rm -f "$AUTOSTART_DIR/$SCRIPT.desktop"
 echo "$HOME/.local/share/applications/$SCRIPT.desktop"
 rm -f "$HOME/.local/share/applications/$SCRIPT.desktop"
 
+cd ..
+rm -rf pipewire-controller
+
 echo "Uninstallation completed successfully."
