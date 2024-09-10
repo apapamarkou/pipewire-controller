@@ -51,7 +51,7 @@ fi
 # Create the desktop file in autostart
 echo "[Desktop Entry]
 Type=Application
-Name=Audio Controller
+Name=Pipewire Audio Controller
 Comment=Control your audio
 Exec=$LOCAL_BIN_DIR/$SCRIPT
 Icon=$ICON_DIR/$SCRIPT.png
@@ -64,7 +64,7 @@ mkdir -p "$HOME/.local/share/applications"
 # Create the desktop file in applications
 echo "[Desktop Entry]
 Type=Application
-Name=Audio Controller
+Name=Pipewire Audio Controller
 Comment=Control your audio
 Exec=$LOCAL_BIN_DIR/$SCRIPT
 Icon=$ICON_DIR/$SCRIPT.png
