@@ -24,7 +24,7 @@ To run this application, you need the following dependencies:
 
 ### Examples
 
-**Arch Linux, Manjaro, Garuda**
+- **Arch Linux, Manjaro, Garuda**
 ```
 sudo pacman -S python-pyqt5 pipewire git wget
 ```
