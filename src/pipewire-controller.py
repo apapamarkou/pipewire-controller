@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
-#  ____  _               _          
-# |  _ \(_)_ ____      _(_)_ __ ___ 
+#  ____  _               _
+# |  _ \(_)_ ____      _(_)_ __ ___
 # | |_) | | '_ \ \ /\ / / | '__/ _ \
 # |  __/| | |_) \ V  V /| | | |  __/
 # |_|   |_| .__/ \_/\_/ |_|_|  \___|
-#        |_|                       
-#   ____            _             _ _           
-#  / ___|___  _ __ | |_ _ __ ___ | | | ___ _ __ 
+#        |_|
+#   ____            _             _ _
+#  / ___|___  _ __ | |_ _ __ ___ | | | ___ _ __
 # | |   / _ \| '_ \| __| '__/ _ \| | |/ _ \ '__|
-# | |__| (_) | | | | |_| | | (_) | | |  __/ |   
-#  \____\___/|_| |_|\__|_|  \___/|_|_|\___|_|   
+# | |__| (_) | | | | |_| | | (_) | | |  __/ |
+#  \____\___/|_| |_|\__|_|  \___/|_|_|\___|_|
 #
 #
 # A simple tray icon to control your audio
@@ -27,7 +27,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 
 # Configuration file path
-CONFIG_PATH = os.path.expanduser("~/.config/pipewire_controller/pipewire_controller.settings")
+CONFIG_PATH = os.path.expanduser("~/.config/pipewire-controller/pipewire-controller.settings")
 
 # Default settings
 DEFAULT_SETTINGS = {
@@ -61,7 +61,7 @@ class AboutDialog(QDialog):
             "<h2 style='text-align: center;'>Version 1.0</h2>"
             "<p>A system tray icon to controll pipewire</p>"
             "<p>Author <b>Andrianos Papamarkou</b></p>"
-            "<p><a href='https://github.com/apapamarkou/pipewire_controller'>Visit on GitHub</a></p>"
+            "<p><a href='https://github.com/apapamarkou/pipewire-controller'>Visit on GitHub</a></p>"
             )
 
         title_label.setAlignment(Qt.AlignCenter)
@@ -90,9 +90,9 @@ class TrayIconApp(QApplication):
         # Create tray icon
         self.tray_icon = QSystemTrayIcon()
 
-        icon_path = os.path.expanduser('~/Applications/pipewire_controller/pipewire-icon.png')
+        icon_path = os.path.expanduser('~/.local/share/icons/pipewire-controller.sh.png')
         self.tray_icon.setIcon(QIcon(icon_path))  # Use a generic sound icon
-        
+
         self.tray_icon.setIcon(QIcon.fromTheme('preferences-desktop-sound'))  # Use a generic sound icon
         self.update_tooltip()
         self.tray_icon.setContextMenu(self.create_menu())
