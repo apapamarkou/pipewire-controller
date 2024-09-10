@@ -46,31 +46,33 @@ cp "$SCRIPT_DIR/src/$SCRIPT.png" "$ICON_DIR"
 if [ ! -d "$AUTOSTART_DIR" ]; then
     echo "Creating directory $AUTOSTART_DIR"
     mkdir -p "$AUTOSTART_DIR"
-    # Create the desktop file in autostart
-    echo "[Desktop Entry]
-    Type=Application
-    Name=Audio Controller
-    Comment=Control your audio
-    Exec=$LOCAL_BIN_DIR/$SCRIPT
-    Icon=$ICON_DIR/$SCRIPT.png
-    Terminal=false
-    Categories=AudioVideo;Audio;Settings;
-    StartupNotify=true
-    " > "$AUTOSTART_DIR/$SCRIPT.desktop"
-
-    mkdir -p "$HOME/.local/share/applications"
-    # Create the desktop file in applications
-    echo "[Desktop Entry]
-    Type=Application
-    Name=Audio Controller
-    Comment=Control your audio
-    Exec=$LOCAL_BIN_DIR/$SCRIPT
-    Icon=$ICON_DIR/$SCRIPT.png
-    Terminal=false
-    Categories=AudioVideo;Audio;Settings;
-    StartupNotify=true
-    " > "$HOME/.local/share/applications/$SCRIPT.desktop"
 fi
+
+# Create the desktop file in autostart
+echo "[Desktop Entry]
+Type=Application
+Name=Audio Controller
+Comment=Control your audio
+Exec=$LOCAL_BIN_DIR/$SCRIPT
+Icon=$ICON_DIR/$SCRIPT.png
+Terminal=false
+Categories=AudioVideo;Audio;Settings;
+StartupNotify=true
+" > "$AUTOSTART_DIR/$SCRIPT.desktop"
+
+mkdir -p "$HOME/.local/share/applications"
+# Create the desktop file in applications
+echo "[Desktop Entry]
+Type=Application
+Name=Audio Controller
+Comment=Control your audio
+Exec=$LOCAL_BIN_DIR/$SCRIPT
+Icon=$ICON_DIR/$SCRIPT.png
+Terminal=false
+Categories=AudioVideo;Audio;Settings;
+StartupNotify=true
+" > "$HOME/.local/share/applications/$SCRIPT.desktop"
+
 
 # Make sure the desktop file is executable
 chmod a+x "$AUTOSTART_DIR/$SCRIPT.desktop"
