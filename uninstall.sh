@@ -35,10 +35,11 @@ rm -f "$ICON_DIR/$SCRIPT.png"
 echo "Removing $AUTOSTART_DIR/$SCRIPT.desktop"
 rm -f "$AUTOSTART_DIR/$SCRIPT.desktop"
 # rm -rf "$ΗΟΜΕ/.local/share/applications/pipewire-controller.py.desktop"
-echo "$HOME/.local/share/applications/$SCRIPT.desktop"
+echo "Removing $HOME/.local/share/applications/$SCRIPT.desktop"
 rm -f "$HOME/.local/share/applications/$SCRIPT.desktop"
 
 cd ..
+echo "Removing local copy of git repo..."
 rm -rf pipewire-controller
 
 echo "Uninstallation completed successfully."

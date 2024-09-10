@@ -83,6 +83,9 @@ echo "Installation complete. You can now use the tray icon to control your audio
 # Run the script
 $LOCAL_BIN_DIR/$SCRIPT &
 
+# Remove the local copy of the git repo
+echo "Removing local copy of git repo..."
 rm -rf "$SCRIPT_DIR"
+
 echo "Pipewire Controller has been started."
 echo "Enjoy your audio!"
