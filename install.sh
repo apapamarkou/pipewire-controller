@@ -32,7 +32,7 @@ if [ ! -d "$LOCAL_BIN_DIR" ]; then
     mkdir -p "$LOCAL_BIN_DIR"
 fi
 
-$SCRIPT="pipewire-controller.py"
+SCRIPT="pipewire-controller.py"
 
 # Copy script to ~/.local/bin
 cp "$SCRIPT_DIR/src/$SCRIPT" "$LOCAL_BIN_DIR"

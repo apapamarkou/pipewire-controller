@@ -22,7 +22,7 @@
 LOCAL_BIN_DIR="$HOME/.local/bin"
 ICON_DIR="$HOME/.local/share/icons"
 AUTOSTART_DIR="$HOME/.config/autostart"
-$SCRIPT="pipewire-controller.py"
+SCRIPT="pipewire-controller.py"
 
 # Remove files
 rm -f "$LOCAL_BIN_DIR/$SCRIPT"
