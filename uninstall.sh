@@ -24,10 +24,14 @@ ICON_DIR="$HOME/.local/share/icons"
 AUTOSTART_DIR="$HOME/.config/autostart"
 SCRIPT="pipewire-controller.py"
 
-# Remove files
+# Remove files and directories
+# rm -rf "$HOME/.local/bin/pipewire-controller.py"
 rm -f "$LOCAL_BIN_DIR/$SCRIPT"
+# rm -rf "$HOME/.local/share/icons/pipewire-controller.py.png"
 rm -f "$ICON_DIR/$SCRIPT.png"
+# rm -rf "$HOME/.config/autostart/pipewire-controller.py.desktop"
 rm -f "$AUTOSTART_DIR/$SCRIPT.desktop"
+# rm -rf "$HOME/.cache/pipewire-controller/pipewire-controller.py.desktop"
 rm -f "$ΗΟΜΕ/.local/share/applications/$SCRIPT.desktop"
 
 echo "Uninstallation completed successfully."

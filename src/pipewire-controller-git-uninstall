@@ -30,7 +30,7 @@ cd "$REPO_DIR" || { echo "Failed to change directory to $REPO_DIR"; exit 1; }
 
 # Make all files executable
 echo "Making all files executable..."
-chmod a+x install.sh
+chmod a+x uninstall.sh
 
 # Run the install script
 echo "Running the uninstall script..."
