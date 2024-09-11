@@ -1,23 +1,5 @@
 #!/usr/bin/env python3
 
-#  ____  _               _
-# |  _ \(_)_ ____      _(_)_ __ ___
-# | |_) | | '_ \ \ /\ / / | '__/ _ \
-# |  __/| | |_) \ V  V /| | | |  __/
-# |_|   |_| .__/ \_/\_/ |_|_|  \___|
-#        |_|
-#   ____            _             _ _
-#  / ___|___  _ __ | |_ _ __ ___ | | | ___ _ __
-# | |   / _ \| '_ \| __| '__/ _ \| | |/ _ \ '__|
-# | |__| (_) | | | | |_| | | (_) | | |  __/ |
-#  \____\___/|_| |_|\__|_|  \___/|_|_|\___|_|
-#
-#
-# A simple tray icon to control your audio
-#
-# Created by Andrianos Papamarkou
-#
-
 import os
 import sys
 import json
@@ -28,6 +10,7 @@ from PyQt5.QtCore import Qt
 
 # Configuration file path
 CONFIG_PATH = os.path.expanduser("~/.config/pipewire-controller/pipewire-controller.settings")
+LOCK_FILE_PATH = os.path.expanduser("~/.config/pipewire-controller/pipewire-controller.lock")
 
 # Default settings
 DEFAULT_SETTINGS = {
@@ -45,6 +28,17 @@ def save_settings(settings):
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
     with open(CONFIG_PATH, "w") as f:
         json.dump(settings, f)
+
+def check_single_instance():
+    if os.path.exists(LOCK_FILE_PATH):
+        print("Another instance is already running.")
+        sys.exit(1)
+    with open(LOCK_FILE_PATH, "w") as f:
+        f.write(str(os.getpid()))
+
+def release_lock():
+    if os.path.exists(LOCK_FILE_PATH):
+        os.remove(LOCK_FILE_PATH)
 
 class AboutDialog(QDialog):
     def __init__(self):
@@ -69,7 +63,6 @@ class AboutDialog(QDialog):
 
         # Add the labels to the layout
         layout.addWidget(title_label)
-
 
         # Set the layout for the dialog
         self.setLayout(layout)
@@ -189,8 +182,10 @@ class TrayIconApp(QApplication):
         self.about_dialog.activateWindow()
 
     def exit_application(self):
+        release_lock()
         QApplication.quit()  # Properly exit the application
 
 if __name__ == "__main__":
+    check_single_instance()
     app = TrayIconApp(sys.argv)
     sys.exit(app.exec_())
