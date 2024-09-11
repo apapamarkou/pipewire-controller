@@ -26,7 +26,7 @@ To run this application, you need the following dependencies:
 
 - **Arch Linux, Manjaro, Garuda**
 ```
-sudo pacman -S python-pyqt5 pipewire git wget
+sudo pacman -S --needed python-pyqt5 pipewire git wget
 ```
 
 - **RedHat, Fedora** 
