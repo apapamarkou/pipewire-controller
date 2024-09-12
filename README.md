@@ -15,7 +15,7 @@ A simple to install and use tray icon to control the samplerate and buffersize w
 To run this application, you need the following dependencies:
 
 - Python 3
-- PyQt5
+- PyQt5 or PyQt6 (use -qt6 flag)
 - PipeWire utilities (`pw-metadata` command)
 - Git
 - Wget
@@ -49,14 +49,16 @@ sudo eopkg install python3-qt5 pipewire git wget
 sudo apt-get install python3-pyqt5 pipewire git wget
 ```
 
-## How to Install Piewire Controller
+Note: replace "qt5" with "qt6" if you want to use Qt6
+
+## How to Install Pipewire Controller
 
 Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
 ```
 wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/src/pipewire-controller-git-install | bash
 ```
 
-## How to Uninstall Piewire Controller
+## How to Uninstall Pipewire Controller
 
 Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
 ```
