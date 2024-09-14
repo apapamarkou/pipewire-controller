@@ -53,7 +53,7 @@ echo "[Desktop Entry]
 Type=Application
 Name=Pipewire Audio Controller
 Comment=Control your audio
-Exec=$LOCAL_BIN_DIR/$SCRIPT
+Exec=$LOCAL_BIN_DIR/$SCRIPT $1
 Icon=$ICON_DIR/$SCRIPT.png
 Terminal=false
 Categories=AudioVideo;Audio;Settings;
@@ -66,7 +66,7 @@ echo "[Desktop Entry]
 Type=Application
 Name=Pipewire Audio Controller
 Comment=Control your audio
-Exec=$LOCAL_BIN_DIR/$SCRIPT
+Exec=$LOCAL_BIN_DIR/$SCRIPT $1
 Icon=$ICON_DIR/$SCRIPT.png
 Terminal=false
 Categories=AudioVideo;Audio;Settings;

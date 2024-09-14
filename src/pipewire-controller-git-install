@@ -34,7 +34,7 @@ chmod a+x install.sh
 
 # Run the install script
 echo "Running the install script..."
-./install.sh
+./install.sh $1
 
 # Return to the previous directory
 cd ..
