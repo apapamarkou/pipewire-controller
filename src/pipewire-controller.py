@@ -4,9 +4,23 @@ import os
 import sys
 import json
 import subprocess
-from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QDialog, QLabel, QVBoxLayout
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt
+
+use_qt6 = '-qt6' in sys.argv
+
+if use_qt6:
+    from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu,  QDialog, QLabel, QVBoxLayout
+    from PyQt6.QtGui import QIcon, QAction
+    from PyQt6.QtCore import Qt
+else:
+    from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QDialog, QLabel, QVBoxLayout
+    from PyQt5.QtGui import QIcon
+    from PyQt5.QtCore import Qt
+
+try:
+    config_folder = os.path.expanduser("~/.config/pipewire-controller")
+    os.makedirs(config_folder, exist_ok=True)
+except Exception as e:
+    print(f"An error occurred while creating the folder: {e}")
 
 # Configuration file path
 CONFIG_PATH = os.path.expanduser("~/.config/pipewire-controller/pipewire-controller.settings")
@@ -53,12 +67,12 @@ class AboutDialog(QDialog):
         # Create a label with information
         title_label = QLabel("<h1 style='text-align: center;'>PipeWire Controller</h1>"
             "<h2 style='text-align: center;'>Version 1.0</h2>"
-            "<p>A system tray icon to controll pipewire</p>"
+            "<p>A system tray icon to control pipewire</p>"
             "<p>Author <b>Andrianos Papamarkou</b></p>"
             "<p><a href='https://github.com/apapamarkou/pipewire-controller'>Visit on GitHub</a></p>"
             )
 
-        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter) if use_qt6 else title_label.setAlignment(Qt.AlignCenter)
         title_label.setOpenExternalLinks(True)
 
         # Add the labels to the layout
@@ -176,7 +190,7 @@ class TrayIconApp(QApplication):
     def show_about_dialog(self):
         if self.about_dialog is None:
             self.about_dialog = AboutDialog()
-            self.about_dialog.setAttribute(Qt.WA_DeleteOnClose)  # Ensure the dialog is deleted when closed
+            self.about_dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose) if use_qt6 else self.about_dialog.setAttribute(Qt.WA_DeleteOnClose)
         self.about_dialog.show()
         self.about_dialog.raise_()
         self.about_dialog.activateWindow()
@@ -188,4 +202,4 @@ class TrayIconApp(QApplication):
 if __name__ == "__main__":
     check_single_instance()
     app = TrayIconApp(sys.argv)
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
