@@ -81,7 +81,7 @@ echo "Desktop file created at $AUTOSTART_DIR/$SCRIPT.desktop"
 echo "Installation complete. You can now use the tray icon to control your audio."
 
 # Run the script
-$LOCAL_BIN_DIR/$SCRIPT &
+$LOCAL_BIN_DIR/$SCRIPT $1 &
 
 # Remove the local copy of the git repo
 echo "Removing local copy of git repo..."
