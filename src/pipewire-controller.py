@@ -4,17 +4,18 @@ import os
 import sys
 import json
 import subprocess
+import signal
 
 use_qt6 = '-qt6' in sys.argv
 
 if use_qt6:
     from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu,  QDialog, QLabel, QVBoxLayout
     from PyQt6.QtGui import QIcon, QAction
-    from PyQt6.QtCore import Qt
+    from PyQt6.QtCore import QTimer, Qt
 else:
     from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QDialog, QLabel, QVBoxLayout
     from PyQt5.QtGui import QIcon
-    from PyQt5.QtCore import Qt
+    from PyQt5.QtCore import QTimer, Qt
 
 try:
     config_folder = os.path.expanduser("~/.config/pipewire-controller")
@@ -24,7 +25,7 @@ except Exception as e:
 
 # Configuration file path
 CONFIG_PATH = os.path.expanduser("~/.config/pipewire-controller/pipewire-controller.settings")
-LOCK_FILE_PATH = os.path.expanduser("~/.config/pipewire-controller/pipewire-controller.lock")
+PID_FILE_PATH = os.path.expanduser("~/.config/pipewire-controller.pid")
 
 # Default settings
 DEFAULT_SETTINGS = {
@@ -43,16 +44,28 @@ def save_settings(settings):
     with open(CONFIG_PATH, "w") as f:
         json.dump(settings, f)
 
-def check_single_instance():
-    if os.path.exists(LOCK_FILE_PATH):
-        print("Another instance is already running.")
-        sys.exit(1)
-    with open(LOCK_FILE_PATH, "w") as f:
+def check_and_kill_existing_instance():
+    """Check for an existing instance by reading the PID file, and terminate it if found."""
+    if os.path.exists(PID_FILE_PATH):
+        with open(PID_FILE_PATH, "r") as f:
+            existing_pid = int(f.read())
+        try:
+            os.kill(existing_pid, signal.SIGTERM)
+            print(f"Terminated existing instance with PID: {existing_pid}")
+        except ProcessLookupError:
+            print(f"No process found with PID: {existing_pid}. Continuing...")
+        except Exception as e:
+            print(f"Error terminating process: {e}")
+
+    # Write the current process's PID to the file
+    with open(PID_FILE_PATH, "w") as f:
         f.write(str(os.getpid()))
 
-def release_lock():
-    if os.path.exists(LOCK_FILE_PATH):
-        os.remove(LOCK_FILE_PATH)
+def remove_pid_file():
+    """Remove the PID file on application exit."""
+    if os.path.exists(PID_FILE_PATH):
+        os.remove(PID_FILE_PATH)
+        print("PID file removed.")
 
 class AboutDialog(QDialog):
     def __init__(self):
@@ -196,10 +209,20 @@ class TrayIconApp(QApplication):
         self.about_dialog.activateWindow()
 
     def exit_application(self):
-        release_lock()
+        remove_pid_file()
         QApplication.quit()  # Properly exit the application
 
 if __name__ == "__main__":
-    check_single_instance()
+    check_and_kill_existing_instance()
+
     app = TrayIconApp(sys.argv)
-    sys.exit(app.exec())
+
+    # Ensure the PID file is removed when the application quits
+    app.aboutToQuit.connect(remove_pid_file)
+
+    # Use QTimer to keep the event loop running
+    timer = QTimer()
+    timer.timeout.connect(lambda: None)
+    timer.start(1000)
+
+    sys.exit(app.exec_())
