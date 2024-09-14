@@ -49,14 +49,16 @@ sudo eopkg install python3-qt5 pipewire git wget
 sudo apt-get install python3-pyqt5 pipewire git wget
 ```
 
-Note: replace "qt5" with "qt6" if you want to use Qt6
+Note: replace `python3-qt5` with `python3-qt5` if you want to use Qt6
 
 ## How to Install Pipewire Controller
 
 Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
 ```
-wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/src/pipewire-controller-git-install | bash
+QT_PLATFORM=5 wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/src/pipewire-controller-git-install | bash
 ```
+
+Note: replace `QT_PLATFORM=5` with `QT_PLATFORM=6` if you want to use Qt6
 
 ## How to Uninstall Pipewire Controller
 
@@ -64,6 +66,14 @@ Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
 ```
 wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/src/pipewire-controller-git-uninstall | bash
 ```
+
+## Acknowledgments
+
+I would like to extend our heartfelt thanks to the following contributors:
+
+- **ItzSelenux** - For their contributions and support.
+
+Thank you for being a part of our project and helping make it better!
 
 ## License
 
