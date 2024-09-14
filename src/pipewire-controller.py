@@ -110,10 +110,10 @@ class TrayIconApp(QApplication):
         # Create tray icon
         self.tray_icon = QSystemTrayIcon()
 
-        icon_path = os.path.expanduser('~/.local/share/icons/pipewire-controller.sh.png')
-        self.tray_icon.setIcon(QIcon(icon_path))  # Use a generic sound icon
+        icon_path = os.path.expanduser('~/.local/share/icons/pipewire-controller.py.png')
+        self.tray_icon.setIcon(QIcon(icon_path))
 
-        self.tray_icon.setIcon(QIcon.fromTheme('preferences-desktop-sound'))  # Use a generic sound icon
+        # self.tray_icon.setIcon(QIcon.fromTheme('preferences-desktop-sound'))  # Use a generic sound icon
         self.update_tooltip()
         self.tray_icon.setContextMenu(self.create_menu())
         self.tray_icon.show()
