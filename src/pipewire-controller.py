@@ -9,7 +9,7 @@ import signal
 use_qt6 = '-qt6' in sys.argv
 
 if use_qt6:
-    from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu,  QDialog, QLabel, QVBoxLayout
+    from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QDialog, QLabel, QVBoxLayout
     from PyQt6.QtGui import QIcon, QAction
     from PyQt6.QtCore import QTimer, Qt
 else:
@@ -79,11 +79,11 @@ class AboutDialog(QDialog):
 
         # Create a label with information
         title_label = QLabel("<h1 style='text-align: center;'>PipeWire Controller</h1>"
-            "<h2 style='text-align: center;'>Version 1.0</h2>"
-            "<p>A system tray icon to control pipewire</p>"
-            "<p>Author <b>Andrianos Papamarkou</b></p>"
-            "<p><a href='https://github.com/apapamarkou/pipewire-controller'>Visit on GitHub</a></p>"
-            )
+                             "<h2 style='text-align: center;'>Version 1.0</h2>"
+                             "<p>A system tray icon to control pipewire</p>"
+                             "<p>Author <b>Andrianos Papamarkou</b></p>"
+                             "<p><a href='https://github.com/apapamarkou/pipewire-controller'>Visit on GitHub</a></p>"
+                             )
 
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter) if use_qt6 else title_label.setAlignment(Qt.AlignCenter)
         title_label.setOpenExternalLinks(True)
@@ -118,7 +118,16 @@ class TrayIconApp(QApplication):
         self.tray_icon.setContextMenu(self.create_menu())
         self.tray_icon.show()
 
-        self.about_dialog = None  # Initialize the about dialog attribute
+        self.about_dialog = None
+
+        # Connect the activated signal to handle clicks
+        self.tray_icon.activated.connect(self.on_tray_icon_activated)
+
+    def on_tray_icon_activated(self, reason):
+        if reason == QSystemTrayIcon.Trigger:  # Left-click
+            self.tray_icon.contextMenu().popup(self.tray_icon.geometry().center())
+        elif reason == QSystemTrayIcon.Context:  # Right-click
+            self.show_about_dialog()
 
     def create_menu(self):
         menu = QMenu()
