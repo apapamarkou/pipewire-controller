@@ -234,4 +234,4 @@ if __name__ == "__main__":
     timer.timeout.connect(lambda: None)
     timer.start(1000)
 
-    sys.exit(app.exec_())
+    sys.exit(app.exec()) if use_qt6 else sys.exit(app.exec_())
