@@ -125,9 +125,10 @@ class TrayIconApp(QApplication):
 
     def on_tray_icon_activated(self, reason):
         if reason == QSystemTrayIcon.Trigger:  # Left-click
-            self.tray_icon.contextMenu().popup(self.tray_icon.geometry().center())
+            self.show_about_dialog()  # Show about dialog on left-click
         elif reason == QSystemTrayIcon.Context:  # Right-click
-            self.show_about_dialog()
+            self.tray_icon.contextMenu().popup(self.tray_icon.geometry().center())  # Show menu on right-click
+
 
     def create_menu(self):
         menu = QMenu()
@@ -213,9 +214,14 @@ class TrayIconApp(QApplication):
         if self.about_dialog is None:
             self.about_dialog = AboutDialog()
             self.about_dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose) if use_qt6 else self.about_dialog.setAttribute(Qt.WA_DeleteOnClose)
-        self.about_dialog.show()
-        self.about_dialog.raise_()
-        self.about_dialog.activateWindow()
+
+        if self.about_dialog.isVisible():
+            self.about_dialog.close()  # Close the dialog if it is open
+        else:
+            self.about_dialog.show()  # Show the dialog if it is not open
+            self.about_dialog.raise_()
+            self.about_dialog.activateWindow()
+
 
     def exit_application(self):
         remove_pid_file()
