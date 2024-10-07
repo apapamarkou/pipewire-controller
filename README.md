@@ -2,11 +2,11 @@
 
 ![Peek 2024-07-04 02-18](https://github.com/apapamarkou/pipewire_controller/assets/42995877/32536db2-a461-4078-896c-573e77dd7092)
 
-A simple to install and use tray icon to control the samplerate and buffersize when using PipeWire audio server.
+A simple to install and use tray icon to control the samplerate and buffersize when using [PipeWire](https://pipewire.org/) audio server.
 
 ## Features
 
-- Change the samplerate and buffer size of PipeWire from a system tray icon.
+- Change the samplerate and buffer size of [PipeWire](https://pipewire.org/) from a system tray icon.
 - Save and load settings automatically.
 - Support for any Linux desktop environment or window manager with a system tray visible.
 
@@ -71,7 +71,8 @@ wget -qO- https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main
 
 I would like to extend our heartfelt thanks to the following contributors:
 
-- **ItzSelenux** - For their contributions and support.
+- **@[ItzSelenux](https://github.com/ItzSelenux)**
+- **@[Axel-Erfurt](https://github.com/Axel-Erfurt)**
 
 Thank you for being a part of our project and helping make it better!
 
