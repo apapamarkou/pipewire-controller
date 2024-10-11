@@ -32,7 +32,7 @@ if [ ! -d "$LOCAL_BIN_DIR" ]; then
     mkdir -p "$LOCAL_BIN_DIR"
 fi
 
-# Create the ~/.local/bin directory if it doesn't exist
+# Create the ~/.local/share/icons directory if it doesn't exist
 if [ ! -d "$ICON_DIR" ]; then
     echo "Creating directory $ICON_DIR"
     mkdir -p "$ICON_DIR"
