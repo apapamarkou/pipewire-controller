@@ -32,6 +32,12 @@ if [ ! -d "$LOCAL_BIN_DIR" ]; then
     mkdir -p "$LOCAL_BIN_DIR"
 fi
 
+# Create the ~/.local/bin directory if it doesn't exist
+if [ ! -d "$ICON_DIR" ]; then
+    echo "Creating directory $ICON_DIR"
+    mkdir -p "$ICON_DIR"
+fi
+
 SCRIPT="pipewire-controller.py"
 
 # Copy script to ~/.local/bin
