@@ -116,6 +116,13 @@ class AboutDialog(QDialog):
         event.ignore()
         self.hide()
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.hide()  # hides the dialog instead of closing the application
+        else:
+            super().keyPressEvent(event)  # default behavior for other key events
+
+
 class TrayIconApp(QApplication):
     def __init__(self, argv):
         super().__init__(argv)
