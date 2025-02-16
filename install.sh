@@ -62,7 +62,7 @@ Comment=Control your audio
 Exec=$LOCAL_BIN_DIR/$SCRIPT $1
 Icon=$ICON_DIR/$SCRIPT.png
 Terminal=false
-Categories=AudioVideo;Audio;Settings;
+Categories=AudioVideo;Audio;
 StartupNotify=true
 " > "$AUTOSTART_DIR/$SCRIPT.desktop"
 
@@ -75,7 +75,7 @@ Comment=Control your audio
 Exec=$LOCAL_BIN_DIR/$SCRIPT $1
 Icon=$ICON_DIR/$SCRIPT.png
 Terminal=false
-Categories=AudioVideo;Audio;Settings;
+Categories=AudioVideo;Audio;
 StartupNotify=true
 " > "$HOME/.local/share/applications/$SCRIPT.desktop"
 
