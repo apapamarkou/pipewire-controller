@@ -51,7 +51,7 @@ sudo apt-get install python3-pyqt5 pipewire git wget
 
 Note: replace `python3-qt5` with `python3-qt5` if you want to use Qt6
 
-## How to Install Pipewire Controller
+## How to Install/Update Pipewire Controller
 
 Copy the following command, paste it in a terminal and hit [ENTER]. Thats it!
 ```
