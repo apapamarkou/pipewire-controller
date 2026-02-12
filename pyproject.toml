@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pipewire-controller"
+version = "2.0.0"
+description = "A system tray application to control PipeWire sample rate and buffer size"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "GPL-3.0-or-later"}
+authors = [
+    {name = "Andrianos Papamarkou"}
+]
+keywords = ["pipewire", "audio", "linux", "system-tray"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio",
+]
+
+dependencies = [
+    "PyQt6>=6.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.11.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+pipewire-controller = "pipewire_controller.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/apapamarkou/pipewire-controller"
+Repository = "https://github.com/apapamarkou/pipewire-controller"
+Issues = "https://github.com/apapamarkou/pipewire-controller/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pipewire_controller = ["resources/icons/*.png"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=src/pipewire_controller --cov-report=term-missing"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
