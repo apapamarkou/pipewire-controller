@@ -30,7 +30,7 @@ A modern, production-ready system tray application for controlling PipeWire audi
 ### From PyPI (Recommended)
 
 ```bash
-pip install pipewire-controller
+pipx install pipewire-controller
 ```
 
 ### From Source
@@ -52,21 +52,25 @@ pip install -e ".[dev]"
 ### Distribution-Specific Dependencies
 
 **Arch Linux / Manjaro / Garuda:**
+
 ```bash
 sudo pacman -S python-pyqt6 pipewire wireplumber
 ```
 
 **Fedora / RHEL:**
+
 ```bash
 sudo dnf install python3-pyqt6 pipewire pipewire-utils
 ```
 
 **Debian / Ubuntu / Mint:**
+
 ```bash
 sudo apt install python3-pyqt6 pipewire pipewire-bin wireplumber
 ```
 
 **openSUSE:**
+
 ```bash
 sudo zypper install python3-qt6 pipewire pipewire-tools
 ```
@@ -78,7 +82,7 @@ sudo zypper install python3-qt6 pipewire pipewire-tools
 After installation, simply run:
 
 ```bash
-pipewire-controller
+~/.local/bin/pipewire-controller
 ```
 
 Or as a Python module:
@@ -167,6 +171,7 @@ ruff check src/ tests/
 ### Tray Icon Not Showing
 
 Ensure your desktop environment supports system tray icons:
+
 - **GNOME**: Install `gnome-shell-extension-appindicator`
 - **KDE Plasma**: Built-in support
 - **i3/Sway**: Use `waybar` or `i3status`
@@ -174,6 +179,7 @@ Ensure your desktop environment supports system tray icons:
 ### PipeWire Commands Not Found
 
 Install PipeWire utilities:
+
 ```bash
 # Check if installed
 which pw-metadata pw-dump wpctl
@@ -185,6 +191,7 @@ sudo pacman -S pipewire wireplumber
 ### Settings Not Persisting
 
 Check permissions on config directory:
+
 ```bash
 ls -la ~/.config/pipewire-controller/
 ```
@@ -212,6 +219,7 @@ Contributions are welcome! Please follow these guidelines:
 ## Acknowledgments
 
 Special thanks to:
+
 - **[@ItzSelenux](https://github.com/ItzSelenux)** - Contributions and testing
 - **[@Axel-Erfurt](https://github.com/Axel-Erfurt)** - UI improvements
 - **PipeWire Team** - For the excellent audio server
@@ -228,4 +236,4 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ---
 
 **Author**: Andrianos Papamarkou  
-**Repository**: https://github.com/apapamarkou/pipewire-controller
+**Repository**: <https://github.com/apapamarkou/pipewire-controller>
