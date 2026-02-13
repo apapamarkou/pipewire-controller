@@ -43,6 +43,7 @@ echo "📦 Installing dependencies..."
 source venv/bin/activate
 pip install --upgrade pip
 pip install -e ".[dev]"
+pip install build twine
 
 echo
 echo "✅ Setup complete!"
