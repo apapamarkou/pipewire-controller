@@ -1,7 +1,18 @@
 """Pytest configuration and shared fixtures."""
 
+import os
 import pytest
 from unittest.mock import Mock, MagicMock
+
+# Configure Qt for headless testing
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+os.environ.setdefault("QT_DEBUG_PLUGINS", "0")
+
+
+@pytest.fixture(scope="session")
+def qapp_args():
+    """Arguments for QApplication - session scoped to avoid multiple instances."""
+    return []
 
 
 @pytest.fixture
