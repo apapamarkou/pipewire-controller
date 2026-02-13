@@ -7,6 +7,7 @@ This project uses **pytest** for testing the PipeWire engine logic. Tests run wi
 ## Architecture
 
 The project uses a **logic-first architecture**:
+
 - **PipewireEngine** (`engine.py`) - Pure logic, no GUI dependencies
 - **TrayApplication** (`ui/tray.py`) - GUI that calls engine methods
 - **Tests** - Test engine logic only, no GUI testing needed
@@ -170,11 +171,13 @@ def test_set_sample_rate_failure(mocker):
 ### Import errors in tests
 
 Ensure package is installed:
+
 ```bash
 pip install -e ".[dev]"
 ```
 
 Or use PYTHONPATH:
+
 ```bash
 PYTHONPATH=src pytest
 ```
@@ -182,6 +185,7 @@ PYTHONPATH=src pytest
 ### Module not found
 
 Install test dependencies:
+
 ```bash
 pip install pytest pytest-mock pytest-cov
 ```
@@ -212,6 +216,7 @@ View results at: `https://github.com/YOUR_USERNAME/pipewire-controller/actions`
 The UI layer is thin - it just calls engine methods. By testing the engine thoroughly, we ensure the logic is correct. The UI is simple enough that manual testing suffices.
 
 **Benefits:**
+
 - ✅ Fast tests (no GUI initialization)
 - ✅ No segfaults or Qt issues
 - ✅ Simple CI/CD (no system dependencies)

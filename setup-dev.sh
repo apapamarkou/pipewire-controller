@@ -40,7 +40,12 @@ fi
 # Activate and install
 echo
 echo "📦 Installing dependencies..."
+
+# If shell is bash,zsh:
 source venv/bin/activate
+# If shell is fish:
+# source venv/bin/activate.fish
+
 pip install --upgrade pip
 pip install -e ".[dev]"
 pip install build twine
@@ -55,4 +60,3 @@ echo "  3. Run application: pipewire-controller"
 echo "  4. Format code: black src/ tests/"
 echo "  5. Lint code: ruff check src/ tests/"
 echo
-echo "Happy coding! 🚀"

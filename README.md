@@ -40,7 +40,7 @@ This will automatically:
 - Install pipewire-controller via pipx
 - Create an autostart desktop entry
 
-### From PyPI (Recommended)
+### From PyPI
 
 ```bash
 pipx install pipewire-controller
