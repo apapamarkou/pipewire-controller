@@ -1,249 +1,257 @@
-# Architecture Overview
+# Architecture - Logic-First Design
+
+## Overview
+
+PipeWire Controller uses a **logic-first architecture** that separates business logic from UI, enabling reliable testing and maintainability.
 
 ## Design Principles
 
-1. **Separation of Concerns**: Core logic, UI, and utilities are separated
-2. **Testability**: All components are mockable and testable
-3. **Error Handling**: Graceful degradation when PipeWire commands fail
-4. **Hardware Awareness**: Dynamic UI based on actual hardware capabilities
+1. **Separation of Concerns** - Logic and UI are completely decoupled
+2. **Testability** - Engine has zero GUI dependencies, fully testable
+3. **Simplicity** - UI is thin, just calls engine methods
+4. **Reliability** - No segfaults, no Qt issues in tests
 
 ## Component Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    System Tray UI                       │
-│                  (ui/tray.py)                          │
+│                    UI Layer (PyQt6)                     │
+│                  TrayApplication                        │
 │  - Menu rendering                                       │
-│  - User interaction handling                            │
-│  - Tooltip updates                                      │
-└────────────┬────────────────────────────┬───────────────┘
-             │                            │
-             ▼                            ▼
-┌────────────────────────┐   ┌──────────────────────────┐
-│  PipeWire Controller   │   │   Hardware Detector      │
-│  (core/pipewire.py)    │   │   (core/hardware.py)     │
-│                        │   │                          │
-│  - set_sample_rate()   │   │  - get_supported_rates() │
-│  - set_buffer_size()   │   │  - get_device_info()     │
-│  - get_current_rate()  │   │                          │
-└────────┬───────────────┘   └──────────┬───────────────┘
-         │                              │
-         ▼                              ▼
+│  - User interaction                                     │
+│  - Settings display                                     │
+└────────────┬────────────────────────────────────────────┘
+             │
+             │ Calls methods
+             │
+             ▼
+┌─────────────────────────────────────────────────────────┐
+│                  Logic Layer (Pure Python)              │
+│                   PipewireEngine                        │
+│                                                         │
+│  - set_sample_rate(rate)                               │
+│  - set_buffer_size(size)                               │
+│  - get_supported_sample_rates()                        │
+│  - get_current_rate()                                  │
+│  - get_current_quantum()                               │
+│  - get_device_info()                                   │
+└────────────┬────────────────────────────────────────────┘
+             │
+             │ Executes commands
+             │
+             ▼
 ┌─────────────────────────────────────────────────────────┐
 │              PipeWire CLI Tools                         │
 │  pw-metadata  |  pw-dump  |  wpctl                     │
 └─────────────────────────────────────────────────────────┘
-
-         ┌──────────────────────┐
-         │   Configuration      │
-         │   (utils/config.py)  │
-         │                      │
-         │  - load()            │
-         │  - save()            │
-         └──────────────────────┘
-
-         ┌──────────────────────┐
-         │  Process Manager     │
-         │  (utils/process.py)  │
-         │                      │
-         │  - Single instance   │
-         │  - PID management    │
-         └──────────────────────┘
 ```
+
+## Key Components
+
+### PipewireEngine (`engine.py`)
+
+**Pure logic class with NO GUI dependencies.**
+
+```python
+class PipewireEngine:
+    def set_sample_rate(self, rate: int) -> bool:
+        """Set sample rate via pw-metadata."""
+        
+    def get_supported_sample_rates(self) -> List[int]:
+        """Query hardware via pw-dump."""
+```
+
+**Responsibilities:**
+- Execute PipeWire commands
+- Parse JSON from pw-dump
+- Handle errors and timeouts
+- Provide fallback values
+
+**No imports from:** PyQt6, Qt, GUI libraries
+
+### TrayApplication (`ui/tray.py`)
+
+**Thin UI layer that delegates to engine.**
+
+```python
+class TrayApplication(QApplication):
+    def __init__(self, argv):
+        super().__init__(argv)
+        self.engine = PipewireEngine()  # Use engine
+        
+    def _change_sample_rate(self, rate: int):
+        if self.engine.set_sample_rate(rate):  # Delegate to engine
+            self.settings["samplerate"] = rate
+            self._update_menu()
+```
+
+**Responsibilities:**
+- Display system tray icon
+- Render menus
+- Handle user clicks
+- Update UI state
+
+**Does NOT:**
+- Execute subprocess commands
+- Parse PipeWire output
+- Contain business logic
 
 ## Data Flow
-
-### Startup Sequence
-
-```
-1. main() → ProcessManager.ensure_single_instance()
-2. TrayApplication.__init__()
-3. Config.load() → Load saved settings
-4. HardwareDetector.get_supported_sample_rates() → Query hardware
-5. PipeWireController.set_sample_rate() → Apply saved rate
-6. PipeWireController.set_buffer_size() → Apply saved buffer
-7. Create system tray icon and menu
-8. Show tray icon
-```
 
 ### User Changes Sample Rate
 
 ```
-1. User clicks menu item (e.g., "96000 Hz")
+1. User clicks "96000 Hz" in menu
 2. TrayApplication._change_sample_rate(96000)
-3. PipeWireController.set_sample_rate(96000)
+3. engine.set_sample_rate(96000)
 4. subprocess.run(["pw-metadata", ...])
-5. Update settings dict
-6. Config.save(settings)
-7. Update menu checkmarks
-8. Update tooltip
+5. Return success/failure to UI
+6. UI updates menu and saves settings
 ```
 
-### Hardware Detection Flow
+### Application Startup
 
 ```
-1. HardwareDetector.get_supported_sample_rates()
-2. subprocess.run(["pw-dump"])
-3. Parse JSON output
-4. Extract device info (type: PipeWire:Interface:Node)
-5. Filter for Audio/Sink and Audio/Source
-6. Extract rate parameters:
-   - Direct rates: {"rate": 48000}
-   - Range rates: {"rate": {"min": 44100, "max": 192000}}
-7. Return sorted list of unique rates
-8. Fallback to common rates on error
+1. TrayApplication.__init__()
+2. engine = PipewireEngine()
+3. rates = engine.get_supported_sample_rates()
+4. subprocess.run(["pw-dump"])
+5. Parse JSON, extract rates
+6. UI creates menu with detected rates
+7. engine.set_sample_rate(saved_rate)
+8. Apply saved settings
 ```
-
-## Key Classes
-
-### TrayApplication (ui/tray.py)
-
-**Responsibilities:**
-- System tray icon management
-- Menu creation and updates
-- User interaction handling
-- Coordinating between components
-
-**Key Methods:**
-- `_create_menu()`: Build context menu with hardware-filtered rates
-- `_change_sample_rate(rate)`: Handle rate change request
-- `_change_buffer_size(size)`: Handle buffer change request
-- `_update_menu()`: Update checkmarks after changes
-
-### PipeWireController (core/pipewire.py)
-
-**Responsibilities:**
-- Interface to PipeWire via CLI tools
-- Execute pw-metadata commands
-- Query current settings
-
-**Key Methods:**
-- `set_sample_rate(rate: int) -> bool`: Set sample rate
-- `set_buffer_size(size: int) -> bool`: Set buffer size
-- `get_current_rate() -> Optional[int]`: Query current rate
-- `get_current_quantum() -> Optional[int]`: Query current buffer
-
-### HardwareDetector (core/hardware.py)
-
-**Responsibilities:**
-- Query PipeWire for device capabilities
-- Parse pw-dump output
-- Extract supported sample rates
-
-**Key Methods:**
-- `get_supported_sample_rates() -> List[int]`: Get hardware rates
-- `_extract_rates_from_devices(devices) -> Set[int]`: Parse device data
-- `get_current_device_info() -> Optional[str]`: Get device name
-
-### Config (utils/config.py)
-
-**Responsibilities:**
-- Load/save settings to JSON
-- Provide default settings
-- Handle file I/O errors
-
-**Key Methods:**
-- `load() -> Dict[str, Any]`: Load settings from file
-- `save(settings) -> bool`: Save settings to file
-
-### ProcessManager (utils/process.py)
-
-**Responsibilities:**
-- Ensure single instance
-- PID file management
-- Cleanup on exit
-
-**Key Methods:**
-- `ensure_single_instance()`: Kill existing instance
-- `cleanup()`: Remove PID file
-
-## Error Handling Strategy
-
-### Subprocess Errors
-
-All subprocess calls use try/except with:
-- `subprocess.CalledProcessError`: Command failed
-- `subprocess.TimeoutExpired`: Command timed out (5s)
-- Return `False` or fallback values on error
-
-### File I/O Errors
-
-Configuration file operations:
-- Create directories if missing
-- Return defaults if file doesn't exist
-- Catch `IOError` and `json.JSONDecodeError`
-
-### Hardware Detection Fallback
-
-If hardware detection fails:
-- Return common sample rates: [44100, 48000, 88200, 96000, 176400, 192000]
-- Log error but continue operation
-- User can still select rates (may fail if unsupported)
 
 ## Testing Strategy
 
-### Unit Tests
+### Engine Tests (Primary)
 
-- Mock all subprocess calls
-- Test success and failure paths
-- Verify correct command arguments
-- Test error handling
+Test pure logic without GUI:
 
-### Integration Tests (Future)
-
-- Test with actual PipeWire instance
-- Verify settings persistence
-- Test hardware detection with real devices
-
-## Configuration Files
-
-### Settings File
-**Location**: `~/.config/pipewire-controller/settings.json`
-
-```json
-{
-  "samplerate": 48000,
-  "buffer_size": 512
-}
+```python
+def test_set_sample_rate(mocker):
+    mock_run = mocker.patch("subprocess.run")
+    engine = PipewireEngine()
+    result = engine.set_sample_rate(48000)
+    
+    assert result is True
+    mock_run.assert_called_with([...])
 ```
 
-### PID File
-**Location**: `~/.config/pipewire-controller/app.pid`
+**Benefits:**
+- Fast (no GUI initialization)
+- Reliable (no Qt issues)
+- Simple (standard pytest)
+- Portable (runs anywhere)
 
-Contains single line with process ID:
+### UI Testing (Manual)
+
+UI is thin enough for manual testing:
+- Click menu items
+- Verify settings persist
+- Check tooltip updates
+
+## Error Handling
+
+### Engine Layer
+
+```python
+def set_sample_rate(self, rate: int) -> bool:
+    try:
+        subprocess.run([...], timeout=5)
+        return True
+    except (CalledProcessError, TimeoutExpired):
+        return False  # Graceful failure
 ```
-12345
+
+### UI Layer
+
+```python
+def _change_sample_rate(self, rate: int):
+    if self.engine.set_sample_rate(rate):
+        # Success - update UI
+        self.settings["samplerate"] = rate
+    else:
+        # Failure - UI stays unchanged
+        pass
 ```
 
-## Dependencies
+## Benefits of This Architecture
 
-### Runtime
-- **PyQt6**: GUI framework (>=6.4.0)
-- **Python**: 3.10+ (for modern type hints)
+### 1. Testability
+- Engine fully testable without GUI
+- No segfaults or Qt issues
+- Fast test execution
 
-### System
-- **pw-metadata**: Set PipeWire metadata
-- **pw-dump**: Query PipeWire state
-- **wpctl**: Query device info (optional)
+### 2. Maintainability
+- Clear separation of concerns
+- Easy to understand
+- Simple to modify
 
-### Development
-- **pytest**: Test framework
-- **pytest-mock**: Mocking support
-- **pytest-cov**: Coverage reporting
-- **black**: Code formatting
-- **ruff**: Linting
+### 3. Reliability
+- Logic tested independently
+- UI is thin and simple
+- Fewer bugs
 
-## Performance Considerations
+### 4. Portability
+- Engine can be used in CLI tools
+- Logic reusable in other projects
+- No GUI lock-in
 
-- **Startup Time**: ~100-200ms (hardware detection)
-- **Memory**: ~30-50MB (PyQt6 overhead)
-- **CPU**: Minimal (event-driven)
+## Migration from Old Architecture
+
+### Before (Tightly Coupled)
+
+```python
+class TrayApplication(QApplication):
+    def _change_sample_rate(self, rate):
+        # Direct subprocess call in UI
+        subprocess.run(["pw-metadata", ...])
+```
+
+**Problems:**
+- Can't test without GUI
+- Segfaults in tests
+- Logic mixed with UI
+
+### After (Decoupled)
+
+```python
+class TrayApplication(QApplication):
+    def __init__(self):
+        self.engine = PipewireEngine()
+        
+    def _change_sample_rate(self, rate):
+        # Delegate to engine
+        self.engine.set_sample_rate(rate)
+```
+
+**Benefits:**
+- Test engine independently
+- No segfaults
+- Clean separation
+
+## File Organization
+
+```
+src/pipewire_controller/
+├── engine.py              # Pure logic (testable)
+├── ui/
+│   ├── tray.py           # GUI (thin layer)
+│   └── dialogs.py        # Dialogs
+├── utils/
+│   ├── config.py         # Settings
+│   └── process.py        # PID management
+└── core/                 # Legacy (deprecated)
+```
 
 ## Future Enhancements
 
-1. **Profile Support**: Save/load multiple configurations
-2. **Device Selection**: Choose specific audio device
-3. **Notification**: Show toast on rate change
-4. **Hotkey Support**: Global shortcuts for common rates
-5. **Advanced Settings**: More PipeWire parameters
-6. **GUI Configuration**: Settings dialog instead of JSON
+With this architecture, we can easily add:
+
+1. **CLI Tool** - Use engine directly
+2. **Web API** - Expose engine via REST
+3. **Alternative UIs** - GTK, web interface
+4. **Plugins** - Extend engine functionality
+
+All without touching the core logic!

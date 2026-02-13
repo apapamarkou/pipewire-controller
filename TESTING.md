@@ -2,21 +2,28 @@
 
 ## Overview
 
-This project uses **pytest** with **pytest-qt** for comprehensive testing, including headless GUI testing suitable for CI/CD environments.
+This project uses **pytest** for testing the PipeWire engine logic. Tests run without GUI dependencies, making them fast and reliable.
+
+## Architecture
+
+The project uses a **logic-first architecture**:
+- **PipewireEngine** (`engine.py`) - Pure logic, no GUI dependencies
+- **TrayApplication** (`ui/tray.py`) - GUI that calls engine methods
+- **Tests** - Test engine logic only, no GUI testing needed
 
 ## Test Structure
 
 ```
 tests/
-├── conftest.py           # Shared fixtures and Qt configuration
-├── test_pipewire.py      # PipeWire controller tests (mocked)
-├── test_hardware.py      # Hardware detection tests (mocked)
-└── test_ui.py            # UI/GUI tests with pytest-qt (NEW)
+├── conftest.py           # Shared fixtures
+├── test_pipewire.py      # Legacy PipeWire tests
+├── test_hardware.py      # Legacy hardware tests
+└── test_engine.py        # Engine logic tests (primary)
 ```
 
 ## Running Tests
 
-### Local Testing (with display)
+### Local Testing
 
 ```bash
 # Run all tests
@@ -26,202 +33,139 @@ pytest
 pytest --cov
 
 # Run specific test file
-pytest tests/test_ui.py
+pytest tests/test_engine.py
 
 # Run specific test
-pytest tests/test_ui.py::TestTrayApplicationUI::test_menu_populated_with_hardware_rates
+pytest tests/test_engine.py::TestPipewireEngine::test_set_sample_rate_success
 ```
 
-### Headless Testing (no display)
+### Using Make
 
 ```bash
-# Using xvfb (recommended for CI)
-xvfb-run -a pytest
-
-# Using Qt offscreen platform
-QT_QPA_PLATFORM=offscreen pytest
-
-# Using provided script
-./run-tests-headless.sh
+make test              # Run all tests
+make test-cov          # With coverage report
 ```
 
 ## Test Categories
 
-### 1. Core Functionality Tests (`test_pipewire.py`, `test_hardware.py`)
+### Engine Tests (`test_engine.py`)
 
-Tests PipeWire interaction and hardware detection with mocked subprocess calls:
+Tests PipeWire logic with mocked subprocess calls:
 
-- ✅ Sample rate changes
-- ✅ Buffer size changes
+- ✅ Sample rate setting (success/failure/timeout)
+- ✅ Buffer size setting (success/failure/timeout)
 - ✅ Hardware detection via pw-dump
-- ✅ Error handling (timeouts, failures)
+- ✅ JSON parsing (valid/invalid/empty)
+- ✅ Rate extraction (direct values and ranges)
+- ✅ Device filtering (audio devices only)
+- ✅ Current settings queries
+- ✅ Error handling and fallbacks
 
-### 2. UI/GUI Tests (`test_ui.py`)
+### Legacy Tests
 
-Tests PyQt6 interface with pytest-qt:
-
-- ✅ Menu population with hardware rates
-- ✅ Click actions trigger correct commands
-- ✅ Settings persistence
-- ✅ Error handling in UI
-- ✅ Tooltip updates
-- ✅ Dialog opening
+- `test_pipewire.py` - Original PipeWire controller tests
+- `test_hardware.py` - Original hardware detection tests
 
 ## Key Testing Features
 
 ### Mocked System Calls
 
-All subprocess calls are mocked to avoid requiring actual PipeWire:
+All subprocess calls are mocked - no actual PipeWire needed:
 
 ```python
-@pytest.fixture
-def mock_subprocess(mocker, mock_pw_dump_json):
-    """Mock all subprocess calls."""
+def test_set_sample_rate_success(mocker):
     mock_run = mocker.patch("subprocess.run")
+    mock_run.return_value = Mock(returncode=0)
     
-    def subprocess_side_effect(cmd, **kwargs):
-        if "pw-dump" in cmd:
-            return Mock(stdout=mock_pw_dump_json, returncode=0)
-        elif "pw-metadata" in cmd:
-            return Mock(stdout="", returncode=0)
-        return Mock(stdout="", returncode=0)
+    engine = PipewireEngine()
+    result = engine.set_sample_rate(48000)
     
-    mock_run.side_effect = subprocess_side_effect
-    return mock_run
+    assert result is True
+    mock_run.assert_called_once_with(
+        ["pw-metadata", "-n", "settings", "0", "clock.force-rate", "48000"],
+        check=True,
+        capture_output=True,
+        timeout=5
+    )
 ```
 
-### Headless GUI Testing
+### No GUI Dependencies
 
-Tests run without a display using Qt's offscreen platform:
-
-```python
-# In conftest.py
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-```
-
-### pytest-qt Integration
-
-Uses `qtbot` fixture for GUI interaction:
-
-```python
-def test_clicking_rate_triggers_pw_metadata(app, mock_subprocess, qtbot):
-    """Test that clicking a rate triggers correct pw-metadata command."""
-    # Find menu action
-    target_action = find_action(app, "96000 Hz")
-    
-    # Trigger action
-    target_action.trigger()
-    qtbot.wait(100)
-    
-    # Verify command was called
-    assert "96000" in mock_subprocess.call_args_list[-1][0][0]
-```
+Tests run in standard terminal - no xvfb or Qt libraries needed!
 
 ## GitHub Actions CI/CD
 
 The `.github/workflows/tests.yml` workflow:
 
-1. **Installs system dependencies** (xvfb, Qt6 libraries)
-2. **Runs tests in headless mode** with xvfb-run
+1. **Installs Python dependencies** only
+2. **Runs tests** with simple `pytest` command
 3. **Tests multiple Python versions** (3.10, 3.11, 3.12)
 4. **Uploads coverage** to Codecov
 5. **Runs linting** (ruff, black)
 
-### Required System Dependencies
-
-For headless testing on Ubuntu/Debian:
-
-```bash
-sudo apt-get install -y \
-  xvfb \
-  libxcb-xinerama0 \
-  libxcb-icccm4 \
-  libxcb-image0 \
-  libxcb-keysyms1 \
-  libxcb-randr0 \
-  libxcb-render-util0 \
-  libxcb-shape0 \
-  libxcb-xfixes0 \
-  libxcb-xkb1 \
-  libxkbcommon-x11-0 \
-  libxkbcommon0 \
-  libdbus-1-3 \
-  libegl1 \
-  libfontconfig1 \
-  libglib2.0-0 \
-  libgl1
-```
+No system dependencies required!
 
 ## Test Examples
 
-### Testing Menu Population
+### Testing Command Generation
 
 ```python
-def test_menu_populated_with_hardware_rates(app, mock_subprocess):
-    """Test that menu shows only hardware-supported sample rates."""
-    menu = app.tray_icon.contextMenu()
+def test_set_sample_rate_success(mocker):
+    """Verify correct pw-metadata command is generated."""
+    mock_run = mocker.patch("subprocess.run")
+    engine = PipewireEngine()
+    engine.set_sample_rate(48000)
     
-    # Find sample rate submenu
-    rate_menu = find_submenu(menu, "Sample Rate")
-    rate_texts = [action.text() for action in rate_menu.actions()]
-    
-    # Should contain hardware-supported rates
-    assert "48000 Hz" in rate_texts
-    assert "96000 Hz" in rate_texts
+    mock_run.assert_called_with(
+        ["pw-metadata", "-n", "settings", "0", "clock.force-rate", "48000"],
+        check=True, capture_output=True, timeout=5
+    )
 ```
 
-### Testing Click Actions
+### Testing JSON Parsing
 
 ```python
-def test_clicking_rate_triggers_pw_metadata(app, mock_subprocess, qtbot):
-    """Test that clicking a rate triggers correct pw-metadata command."""
-    action = find_action(app, "96000 Hz")
-    action.trigger()
-    qtbot.wait(100)
+def test_get_supported_rates_with_devices(mocker):
+    """Verify JSON parsing of hardware rates."""
+    pw_dump_output = json.dumps([{
+        "type": "PipeWire:Interface:Node",
+        "info": {
+            "props": {"media.class": "Audio/Sink"},
+            "params": {"EnumFormat": [{"rate": 48000}, {"rate": 96000}]}
+        }
+    }])
     
-    # Verify pw-metadata was called
-    calls = [c for c in mock_subprocess.call_args_list 
-             if "pw-metadata" in c[0][0]]
-    assert "96000" in calls[-1][0][0]
+    mock_run = mocker.patch("subprocess.run")
+    mock_run.return_value = Mock(stdout=pw_dump_output, returncode=0)
+    
+    engine = PipewireEngine()
+    rates = engine.get_supported_sample_rates()
+    
+    assert 48000 in rates
+    assert 96000 in rates
 ```
 
 ### Testing Error Handling
 
 ```python
-def test_pw_metadata_failure_handled_gracefully(qtbot, mocker):
-    """Test that non-zero exit code from pw-metadata is handled."""
+def test_set_sample_rate_failure(mocker):
+    """Verify graceful handling of command failures."""
     mock_run = mocker.patch("subprocess.run")
-    mock_run.side_effect = CalledProcessError(1, "pw-metadata")
+    mock_run.side_effect = subprocess.CalledProcessError(1, "pw-metadata")
     
-    app = TrayApplication([])
-    initial_rate = app.settings["samplerate"]
-    app._change_sample_rate(96000)
+    engine = PipewireEngine()
+    result = engine.set_sample_rate(48000)
     
-    # Settings should not change on failure
-    assert app.settings["samplerate"] == initial_rate
+    assert result is False
 ```
 
 ## Coverage Goals
 
+- **Engine module**: 95%+ coverage
 - **Core modules**: 90%+ coverage
-- **UI modules**: 80%+ coverage
 - **Overall**: 85%+ coverage
 
 ## Troubleshooting
-
-### Tests fail with "cannot connect to X server"
-
-Use headless mode:
-```bash
-QT_QPA_PLATFORM=offscreen pytest
-```
-
-### Tests hang or timeout
-
-Increase timeout in qtbot.wait():
-```python
-qtbot.wait(500)  # Wait 500ms instead of 100ms
-```
 
 ### Import errors in tests
 
@@ -235,40 +179,20 @@ Or use PYTHONPATH:
 PYTHONPATH=src pytest
 ```
 
-### Qt platform plugin errors
+### Module not found
 
-Install required Qt libraries:
+Install test dependencies:
 ```bash
-# Arch
-sudo pacman -S qt6-base
-
-# Ubuntu/Debian
-sudo apt install libqt6gui6
+pip install pytest pytest-mock pytest-cov
 ```
 
 ## Best Practices
 
 1. **Always mock subprocess calls** - Never call actual PipeWire commands
-2. **Use qtbot.wait()** - Allow time for Qt event processing
-3. **Test both success and failure paths** - Include error handling tests
-4. **Keep tests isolated** - Each test should be independent
-5. **Use descriptive test names** - Clearly state what is being tested
-
-## Running in Docker
-
-```dockerfile
-FROM python:3.11-slim
-
-RUN apt-get update && apt-get install -y \
-    xvfb libxcb-xinerama0 libxkbcommon-x11-0 \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-COPY . .
-RUN pip install -e ".[dev]"
-
-CMD ["xvfb-run", "-a", "pytest"]
-```
+2. **Test both success and failure paths** - Include error handling tests
+3. **Keep tests isolated** - Each test should be independent
+4. **Use descriptive test names** - Clearly state what is being tested
+5. **Test the engine, not the UI** - UI just calls engine methods
 
 ## Continuous Integration
 
@@ -276,9 +200,20 @@ The GitHub Actions workflow automatically:
 
 - ✅ Runs on every push and PR
 - ✅ Tests Python 3.10, 3.11, 3.12
-- ✅ Runs in headless mode with xvfb
+- ✅ Runs in standard environment (no xvfb needed)
 - ✅ Generates coverage reports
 - ✅ Checks code formatting
 - ✅ Runs linting
 
 View results at: `https://github.com/YOUR_USERNAME/pipewire-controller/actions`
+
+## Why No GUI Testing?
+
+The UI layer is thin - it just calls engine methods. By testing the engine thoroughly, we ensure the logic is correct. The UI is simple enough that manual testing suffices.
+
+**Benefits:**
+- ✅ Fast tests (no GUI initialization)
+- ✅ No segfaults or Qt issues
+- ✅ Simple CI/CD (no system dependencies)
+- ✅ Easy to debug
+- ✅ Runs anywhere

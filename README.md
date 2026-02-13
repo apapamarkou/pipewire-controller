@@ -122,7 +122,8 @@ Settings are stored in `~/.config/pipewire-controller/settings.json`:
 ```
 pipewire-controller/
 ├── src/pipewire_controller/
-│   ├── core/              # PipeWire interaction & hardware detection
+│   ├── engine.py          # PipeWire logic (no GUI dependencies)
+│   ├── core/              # Legacy modules (deprecated)
 │   ├── ui/                # PyQt6 interface components
 │   └── utils/             # Configuration & process management
 ├── tests/                 # Pytest test suite
@@ -155,10 +156,11 @@ ruff check src/ tests/
 
 ## How It Works
 
-1. **Hardware Detection**: Queries PipeWire via `pw-dump` to detect connected audio devices and their supported sample rates
-2. **Dynamic UI**: Populates the system tray menu with only hardware-supported rates
-3. **Settings Application**: Uses `pw-metadata` to apply sample rate and buffer size changes
-4. **Persistence**: Saves settings to JSON and reapplies on startup
+1. **Hardware Detection**: Engine queries PipeWire via `pw-dump` to detect connected audio devices and their supported sample rates
+2. **Logic Layer**: `PipewireEngine` class handles all PipeWire interactions without GUI dependencies
+3. **Dynamic UI**: System tray populates menu with only hardware-supported rates
+4. **Settings Application**: Engine uses `pw-metadata` to apply sample rate and buffer size changes
+5. **Persistence**: Settings saved to JSON and reapplied on startup
 
 ## Troubleshooting
 
