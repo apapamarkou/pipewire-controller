@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# Detect distribution and install system dependencies
+echo "🔍 Detecting Linux distribution..."
+
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    DISTRO=$ID
+else
+    echo "⚠️  Cannot detect distribution. Please install dependencies manually."
+    DISTRO="unknown"
+fi
+
+echo "📦 Installing system dependencies for $DISTRO..."
+
+case $DISTRO in
+    arch|manjaro|garuda)
+        sudo pacman -S --needed python-pipx python-pyqt6 pipewire wireplumber xcb-util-cursor
+        ;;
+    debian|ubuntu|mint|pop)
+        sudo apt update
+        sudo apt install -y python3-pipx python3-pyqt6 pipewire pipewire-bin wireplumber
+        ;;
+    fedora|rhel|centos)
+        sudo dnf install -y python3-pipx python3-pyqt6 pipewire pipewire-utils
+        ;;
+    opensuse*|suse)
+        sudo zypper install -y python3-pipx python3-qt6 pipewire pipewire-tools
+        ;;
+    *)
+        echo "⚠️  Unknown distribution: $DISTRO"
+        echo "Please install manually: pipx, PyQt6, PipeWire"
+        ;;
+esac
+
+# 2. Install the app via pipx
+echo "🚀 Installing pipewire-controller via pipx..."
+pipx install pipewire-controller --force
+
+# 3. Ensure pipx binaries are in PATH
+pipx ensurepath
+
+# 4. Create the .desktop file
+APP_PATH=$(which pipewire-controller || echo "$HOME/.local/bin/pipewire-controller")
+ICON_PATH="$HOME/.local/share/pipx/venvs/pipewire-controller/lib/python3.12/site-packages/pipewire_controller/resources/icons/icon.png"
+
+echo "🖥️  Creating Desktop Entry..."
+mkdir -p ~/.local/share/applications
+
+cat <<EOF > ~/.local/share/applications/pipewire-controller.desktop
+[Desktop Entry]
+Name=Pipewire Controller
+Exec=$APP_PATH
+Icon=audio-card
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;
+Comment=Control PipeWire sample rates and buffer size.
+EOF
+
+echo "✅ Installation complete!"
+echo "💡 You can now find 'Pipewire Controller' in your Application Menu."

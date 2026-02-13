@@ -27,6 +27,19 @@ A modern, production-ready system tray application for controlling PipeWire audi
 
 ## Installation
 
+### The Easy Way (One Command)
+
+```bash
+wget -qO /tmp/install.sh https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/docs/install && bash /tmp/install.sh
+```
+
+This will automatically:
+
+- Detect your Linux distribution (Arch, Debian/Ubuntu, Fedora, openSUSE)
+- Install required system dependencies
+- Install pipewire-controller via pipx
+- Create an autostart desktop entry
+
 ### From PyPI (Recommended)
 
 ```bash
