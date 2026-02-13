@@ -3,6 +3,8 @@
 from PyQt6.QtWidgets import QDialog, QLabel, QVBoxLayout
 from PyQt6.QtCore import Qt
 
+from .. import __version__
+
 
 class AboutDialog(QDialog):
     """About dialog showing application information."""
@@ -14,9 +16,9 @@ class AboutDialog(QDialog):
 
         layout = QVBoxLayout()
         
-        info_html = """
+        info_html = f"""
         <h1 style='text-align: center;'>PipeWire Controller</h1>
-        <h2 style='text-align: center;'>Version 2.0.0</h2>
+        <h2 style='text-align: center;'>Version {__version__}</h2>
         <p style='text-align: center;'>A system tray application to control PipeWire</p>
         <p style='text-align: center;'>Author: <b>Andrianos Papamarkou</b></p>
         <p style='text-align: center;'>

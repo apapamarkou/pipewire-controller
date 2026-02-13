@@ -1,4 +1,4 @@
-# PipeWire Controller v2.0 - Project Summary
+# PipeWire Controller v1.0 - Project Summary
 
 ## 🎯 Transformation Complete
 
@@ -7,6 +7,7 @@ Your PipeWire Controller has been transformed from a simple script into a **prod
 ## 📦 What's New
 
 ### 1. Modern Package Structure
+
 ```
 src/pipewire_controller/
 ├── core/           # Business logic
@@ -21,12 +22,14 @@ src/pipewire_controller/
 ```
 
 ### 2. PyQt6 Migration ✅
+
 - All imports updated from PyQt5 → PyQt6
 - Modern signal/slot syntax
 - Enum access updated
 - Wayland/X11 compatible
 
 ### 3. Hardware Detection 🔍
+
 ```python
 # Automatically detects supported sample rates
 HardwareDetector.get_supported_sample_rates()
@@ -37,6 +40,7 @@ HardwareDetector.get_supported_sample_rates()
 ```
 
 ### 4. Comprehensive Testing 🧪
+
 ```bash
 pytest                    # Run all tests
 pytest --cov             # With coverage
@@ -44,12 +48,14 @@ pytest -v                # Verbose output
 ```
 
 Tests include:
+
 - ✅ PipeWire command mocking
 - ✅ Hardware detection
 - ✅ Error handling
 - ✅ Configuration management
 
 ### 5. Professional Documentation 📚
+
 - **README_NEW.md**: Complete user guide
 - **CONTRIBUTING.md**: Developer guidelines
 - **MIGRATION.md**: v1 → v2 upgrade guide
@@ -58,6 +64,7 @@ Tests include:
 ## 🚀 Quick Start
 
 ### Installation
+
 ```bash
 # Development setup
 ./setup-dev.sh
@@ -67,6 +74,7 @@ pip install -e ".[dev]"
 ```
 
 ### Running
+
 ```bash
 # As command
 pipewire-controller
@@ -79,6 +87,7 @@ python src/pipewire_controller/__main__.py
 ```
 
 ### Testing
+
 ```bash
 pytest                              # All tests
 pytest tests/test_pipewire.py      # Specific file
@@ -86,6 +95,7 @@ pytest --cov --cov-report=html     # Coverage report
 ```
 
 ### Code Quality
+
 ```bash
 black src/ tests/                  # Format
 ruff check src/ tests/             # Lint
@@ -94,7 +104,9 @@ ruff check src/ tests/             # Lint
 ## 🔑 Key Features
 
 ### 1. Hardware-Aware Rate Selection
+
 The UI dynamically shows only sample rates your DAC supports:
+
 ```python
 # Old: Fixed list [44100, 48000, 88200, 96000]
 # New: Queries hardware via pw-dump
@@ -103,6 +115,7 @@ supported_rates = hw_detector.get_supported_sample_rates()
 ```
 
 ### 2. Robust Error Handling
+
 ```python
 # All subprocess calls have:
 - timeout=5 (prevents hanging)
@@ -111,11 +124,12 @@ supported_rates = hw_detector.get_supported_sample_rates()
 ```
 
 ### 3. Modern Python Packaging
+
 ```toml
 # pyproject.toml
 [project]
 name = "pipewire-controller"
-version = "2.0.0"
+version = "1.0.0"
 requires-python = ">=3.10"
 dependencies = ["PyQt6>=6.4.0"]
 
@@ -124,6 +138,7 @@ pipewire-controller = "pipewire_controller.__main__:main"
 ```
 
 ### 4. Single Instance Management
+
 ```python
 # Automatically kills old instance
 # Writes PID file
@@ -145,7 +160,9 @@ ProcessManager().ensure_single_instance()
 ## 🔧 Configuration
 
 ### Settings File
+
 **Location**: `~/.config/pipewire-controller/settings.json`
+
 ```json
 {
   "samplerate": 48000,
@@ -154,7 +171,9 @@ ProcessManager().ensure_single_instance()
 ```
 
 ### Supported Sample Rates
+
 Dynamically detected, typically:
+
 - 44100 Hz (CD quality)
 - 48000 Hz (Professional)
 - 88200 Hz (2x CD)
@@ -164,6 +183,7 @@ Dynamically detected, typically:
 - 384000 Hz (Ultra Hi-Res, if supported)
 
 ### Buffer Sizes
+
 Fixed options: 32, 64, 128, 256, 512, 1024, 2048 samples
 
 ## 🧪 Test Coverage
@@ -180,6 +200,7 @@ Coverage: ~85%+ (core functionality)
 ## 📝 Code Examples
 
 ### Using the PipeWire Controller
+
 ```python
 from pipewire_controller.core.pipewire import PipeWireController
 
@@ -200,6 +221,7 @@ print(f"Current: {rate}Hz @ {quantum} samples")
 ```
 
 ### Hardware Detection
+
 ```python
 from pipewire_controller.core.hardware import HardwareDetector
 
@@ -215,6 +237,7 @@ print(f"Current device: {info}")
 ```
 
 ### Configuration Management
+
 ```python
 from pipewire_controller.utils.config import Config
 
@@ -232,11 +255,13 @@ config.save(settings)
 ## 🐛 Troubleshooting
 
 ### Import Error: No module named 'PyQt6'
+
 ```bash
 pip install PyQt6
 ```
 
 ### Command not found: pipewire-controller
+
 ```bash
 # Add to PATH
 export PATH="$HOME/.local/bin:$PATH"
@@ -246,6 +271,7 @@ python -m pipewire_controller
 ```
 
 ### Tests failing with subprocess errors
+
 ```bash
 # Install pytest-mock
 pip install pytest-mock
@@ -255,6 +281,7 @@ pytest -v
 ```
 
 ### Hardware detection returns empty list
+
 ```bash
 # Check PipeWire is running
 systemctl --user status pipewire
@@ -283,12 +310,14 @@ See **MIGRATION.md** for detailed steps. Quick summary:
 ## 🤝 Contributing
 
 See **CONTRIBUTING.md** for:
+
 - Code style guidelines
 - Testing requirements
 - PR process
 - Commit conventions
 
 Quick checklist:
+
 - [ ] Tests pass (`pytest`)
 - [ ] Code formatted (`black`)
 - [ ] No lint errors (`ruff`)
@@ -319,6 +348,7 @@ Quick checklist:
 ## 🚀 Next Steps
 
 1. **Test the application**
+
    ```bash
    ./setup-dev.sh
    source venv/bin/activate
@@ -337,6 +367,7 @@ Quick checklist:
    - Add notifications
 
 4. **Publish** (optional)
+
    ```bash
    python -m build
    twine upload dist/*
@@ -352,4 +383,4 @@ Quick checklist:
 
 **Built with ❤️ for the Linux audio community**
 
-Version 2.0.0 | Python 3.10+ | PyQt6 | PipeWire
+Version 1.0.0 | Python 3.10+ | PyQt6 | PipeWire

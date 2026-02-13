@@ -1,4 +1,4 @@
-# 🎛️ PipeWire Controller v2.0 - Complete Transformation
+# 🎛️ PipeWire Controller v1.0 - Complete Transformation
 
 ## 📁 New Project Structure
 
@@ -53,6 +53,7 @@ pipewire-controller/
 ## 🎯 Key Improvements
 
 ### 1️⃣ Package Structure
+
 ```
 BEFORE: Single script                AFTER: Modular package
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -63,6 +64,7 @@ pipewire-controller.py (500 lines)   src/pipewire_controller/
 ```
 
 ### 2️⃣ PyQt5 → PyQt6 Migration
+
 ```python
 # BEFORE (PyQt5)
 from PyQt5.QtWidgets import QApplication
@@ -76,6 +78,7 @@ app.exec()
 ```
 
 ### 3️⃣ Hardware Detection (NEW!)
+
 ```python
 # Automatically detects DAC capabilities
 detector = HardwareDetector()
@@ -86,6 +89,7 @@ rates = detector.get_supported_sample_rates()
 ```
 
 ### 4️⃣ Testing Suite (NEW!)
+
 ```bash
 pytest                    # Run all tests
 pytest --cov             # With coverage report
@@ -95,11 +99,12 @@ Coverage: 85%+ on core functionality
 ```
 
 ### 5️⃣ Modern Packaging
+
 ```toml
 # pyproject.toml (PEP 621)
 [project]
 name = "pipewire-controller"
-version = "2.0.0"
+version = "1.0.0"
 requires-python = ">=3.10"
 dependencies = ["PyQt6>=6.4.0"]
 
@@ -110,13 +115,15 @@ pipewire-controller = "pipewire_controller.__main__:main"
 ## 🚀 Installation Comparison
 
 ### Before (v1.0)
+
 ```bash
 wget -qO- https://raw.githubusercontent.com/.../install | bash
 # Downloads script to ~/.local/bin
 # Manual dependency management
 ```
 
-### After (v2.0)
+### After (v1.0)
+
 ```bash
 pip install pipewire-controller
 # Standard Python package
@@ -126,7 +133,7 @@ pip install pipewire-controller
 
 ## 🔍 Feature Matrix
 
-| Feature | v1.0 | v2.0 |
+| Feature | v0.1 | v1.0 |
 |---------|------|------|
 | Sample rate control | ✅ | ✅ |
 | Buffer size control | ✅ | ✅ |
@@ -145,6 +152,7 @@ pip install pipewire-controller
 ## 📊 Code Organization
 
 ### Component Diagram
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                    User Interface                       │
@@ -272,15 +280,18 @@ pip install dist/*.whl     # Install wheel
 ## 🎓 Learning Resources
 
 ### For Users
+
 1. **README_NEW.md** - Installation and usage
-2. **MIGRATION.md** - Upgrading from v1.0
+2. **MIGRATION.md** - Upgrading from v0.1
 
 ### For Developers
+
 1. **CONTRIBUTING.md** - How to contribute
 2. **ARCHITECTURE.md** - Technical design
 3. **Code files** - Well-documented with docstrings
 
 ### For Maintainers
+
 1. **pyproject.toml** - Package configuration
 2. **Makefile** - Common commands
 3. **tests/** - Test examples
@@ -329,7 +340,7 @@ make clean                     # Remove artifacts
 - [x] ✅ Contributing guidelines
 - [x] ✅ Migration guide
 
-## 🚀 Ready for Production!
+## 🚀 Ready for Production
 
 Your PipeWire Controller is now a **professional, production-ready application** with:
 
