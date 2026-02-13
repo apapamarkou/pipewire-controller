@@ -63,16 +63,8 @@ echo "🖥️  Creating Autostart Entry..."
 mkdir -p ~/.config/autostart
 cp ~/.local/share/applications/pipewire-controller.desktop ~/.config/autostart/pipewire-controller.desktop
 
-# Execute and echo success or error message
-echo "💡 Launching Pipewire Controller..."
-sleep 1
-if nohup $APP_PATH > /dev/null 2>&1 & then
-    echo "✅ Installation complete!"
-else
-    echo "❌ Failed to launch the application. Try running 'pipewire-controller' manually."
-fi
 
-# Check if the binary exists before running
+# Autostart and exit
 if [ -f "$APP_PATH" ]; then
     nohup "$APP_PATH" > /dev/null 2>&1 &
     echo "✅ Installation complete!"
