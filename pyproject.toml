@@ -34,8 +34,6 @@ dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.11.0",
-    "pytest-qt>=4.2.0",
-    "pytest-xvfb>=3.0.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
 ]
@@ -60,7 +58,6 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --cov=src/pipewire_controller --cov-report=term-missing"
-qt_api = "pyqt6"
 
 [tool.black]
 line-length = 100

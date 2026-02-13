@@ -8,7 +8,6 @@ help:
 	@echo "  make install-dev  - Install with dev dependencies"
 	@echo "  make test         - Run tests"
 	@echo "  make test-cov     - Run tests with coverage"
-	@echo "  make test-headless - Run tests in headless mode (xvfb)"
 	@echo "  make format       - Format code with black"
 	@echo "  make lint         - Lint code with ruff"
 	@echo "  make clean        - Remove build artifacts"
@@ -27,9 +26,6 @@ test:
 
 test-cov:
 	PYTHONPATH=src pytest --cov=src/pipewire_controller --cov-report=term-missing --cov-report=html
-
-test-headless:
-	./run-tests-headless.sh
 
 format:
 	black src/ tests/

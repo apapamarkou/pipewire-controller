@@ -8,6 +8,7 @@ from PyQt6.QtCore import QTimer
 
 from ..core.pipewire import PipeWireController
 from ..core.hardware import HardwareDetector
+from ..engine import PipewireEngine
 from ..utils.config import Config
 from ..utils.process import ProcessManager
 from .dialogs import AboutDialog
@@ -23,11 +24,12 @@ class TrayApplication(QApplication):
         
         self.config = Config()
         self.settings = self.config.load()
-        self.pw_controller = PipeWireController()
-        self.hw_detector = HardwareDetector()
+        
+        # Use engine for all PipeWire operations
+        self.engine = PipewireEngine()
         
         # Get hardware-supported sample rates
-        self.supported_rates = self.hw_detector.get_supported_sample_rates()
+        self.supported_rates = self.engine.get_supported_sample_rates()
         
         # Apply saved settings
         self._apply_settings()
@@ -100,7 +102,7 @@ class TrayApplication(QApplication):
 
     def _change_sample_rate(self, rate: int):
         """Change sample rate and update UI."""
-        if self.pw_controller.set_sample_rate(rate):
+        if self.engine.set_sample_rate(rate):
             self.settings["samplerate"] = rate
             self.config.save(self.settings)
             self._update_menu()
@@ -108,7 +110,7 @@ class TrayApplication(QApplication):
 
     def _change_buffer_size(self, size: int):
         """Change buffer size and update UI."""
-        if self.pw_controller.set_buffer_size(size):
+        if self.engine.set_buffer_size(size):
             self.settings["buffer_size"] = size
             self.config.save(self.settings)
             self._update_menu()
@@ -140,8 +142,8 @@ class TrayApplication(QApplication):
 
     def _apply_settings(self):
         """Apply saved settings to PipeWire."""
-        self.pw_controller.set_sample_rate(self.settings["samplerate"])
-        self.pw_controller.set_buffer_size(self.settings["buffer_size"])
+        self.engine.set_sample_rate(self.settings["samplerate"])
+        self.engine.set_buffer_size(self.settings["buffer_size"])
 
     def _on_tray_activated(self, reason):
         """Handle tray icon activation."""
