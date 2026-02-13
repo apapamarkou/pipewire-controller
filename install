@@ -71,4 +71,14 @@ if nohup $APP_PATH > /dev/null 2>&1 & then
 else
     echo "❌ Failed to launch the application. Try running 'pipewire-controller' manually."
 fi
-echo "💡 You can now find 'Pipewire Controller' in your Application Menu."
+
+# Check if the binary exists before running
+if [ -f "$APP_PATH" ]; then
+    nohup "$APP_PATH" > /dev/null 2>&1 &
+    echo "✅ Installation complete!"
+    echo "💡 You can now find 'Pipewire Controller' in your Application Menu."
+else
+    echo "❌ Error: could not auto start."
+    echo "✅ Installation complete!"
+    echo "💡 You can now find 'Pipewire Controller' in your Application Menu."
+fi
