@@ -1,14 +1,19 @@
 name: Python Tests
+<<<<<<< HEAD
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+=======
+on: [push, pull_request]
+>>>>>>> 2e2d512 (Fix tests.yml)
 
 jobs:
   test:
     runs-on: ubuntu-latest
+<<<<<<< HEAD
 
     steps:
     - uses: actions/checkout@v4
@@ -35,3 +40,19 @@ jobs:
         # We no longer need xvfb-run because we refactored to engine-only testing!
         export PYTHONPATH=$PYTHONPATH:$(pwd)/src
         pytest tests/test_engine.py
+=======
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-mock
+          pip install -e .  # Installs your project in "editable" mode
+      - name: Run tests
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/src
+          pytest tests/test_engine.py
+>>>>>>> 2e2d512 (Fix tests.yml)
