@@ -30,7 +30,7 @@ A modern, production-ready system tray application for controlling PipeWire audi
 ### The Easy Way (One Command)
 
 ```bash
-wget -qO /tmp/install.sh https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/docs/install && bash /tmp/install.sh
+wget -qO /tmp/install.sh https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/install && bash /tmp/install.sh
 ```
 
 This will automatically:
@@ -39,6 +39,12 @@ This will automatically:
 - Install required system dependencies
 - Install pipewire-controller via pipx
 - Create an autostart desktop entry
+
+### Uninstall
+
+```bash
+wget -qO /tmp/uninstall.sh https://raw.githubusercontent.com/apapamarkou/pipewire-controller/main/uninstall && bash /tmp/uninstall.sh
+```
 
 ### From PyPI
 

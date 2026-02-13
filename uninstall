@@ -1,0 +1,36 @@
+#!/bin/bash
+
+echo "🗑️  Uninstalling PipeWire Controller..."
+echo
+
+# Uninstall via pipx
+if command -v pipx &> /dev/null; then
+    echo "📦 Removing pipewire-controller via pipx..."
+    pipx uninstall pipewire-controller 2>/dev/null || true
+fi
+
+# Remove desktop entry
+if [ -f ~/.local/share/applications/pipewire-controller.desktop ]; then
+    echo "🖥️  Removing desktop entry..."
+    rm ~/.local/share/applications/pipewire-controller.desktop
+fi
+
+# Remove autostart entry
+if [ -f ~/.config/autostart/pipewire-controller.desktop ]; then
+    echo "🚫 Removing autostart entry..."
+    rm ~/.config/autostart/pipewire-controller.desktop
+fi
+
+# Ask about config
+echo
+read -p "Remove configuration files (~/.config/pipewire-controller)? [y/N] " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if [ -d ~/.config/pipewire-controller ]; then
+        echo "🗑️  Removing configuration..."
+        rm -rf ~/.config/pipewire-controller
+    fi
+fi
+
+echo
+echo "✅ Uninstall complete!"
