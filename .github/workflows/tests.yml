@@ -1,46 +1,9 @@
 name: Python Tests
-<<<<<<< HEAD
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-=======
 on: [push, pull_request]
->>>>>>> 2e2d512 (Fix tests.yml)
 
 jobs:
   test:
     runs-on: ubuntu-latest
-<<<<<<< HEAD
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12' # Use a stable version for CI reliability
-
-    - name: Install System Dependencies
-      run: |
-        sudo apt-get update
-        # Install pipewire-bin to provide the pw-metadata and pw-dump binaries
-        sudo apt-get install -y pipewire-bin
-
-    - name: Install Python Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest pytest-mock
-        pip install -e .
-
-    - name: Run Tests
-      run: |
-        # We no longer need xvfb-run because we refactored to engine-only testing!
-        export PYTHONPATH=$PYTHONPATH:$(pwd)/src
-        pytest tests/test_engine.py
-=======
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -55,4 +18,3 @@ jobs:
         run: |
           export PYTHONPATH=$PYTHONPATH:$(pwd)/src
           pytest tests/test_engine.py
->>>>>>> 2e2d512 (Fix tests.yml)
