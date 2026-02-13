@@ -66,7 +66,9 @@ cp ~/.local/share/applications/pipewire-controller.desktop ~/.config/autostart/p
 # Execute and echo success or error message
 echo "💡 Launching Pipewire Controller..."
 sleep 1
-nohup $APP_PATH > /dev/null 2>&1 & || echo "❌ Failed to launch the application. Try running 'pipewire-controller' manually."
-
-echo "✅ Installation complete!"
+if nohup $APP_PATH > /dev/null 2>&1 & then
+    echo "✅ Installation complete!"
+else
+    echo "❌ Failed to launch the application. Try running 'pipewire-controller' manually."
+fi
 echo "💡 You can now find 'Pipewire Controller' in your Application Menu."
