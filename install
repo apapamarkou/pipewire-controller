@@ -22,7 +22,7 @@ case $DISTRO in
         sudo apt install -y python3-pipx python3-pyqt6 pipewire pipewire-bin wireplumber
         ;;
     fedora|rhel|centos)
-        sudo dnf install -y python3-pipx python3-pyqt6 pipewire pipewire-utils
+        sudo dnf install -y pipx python3-pyqt6 pipewire pipewire-utils
         ;;
     opensuse*|suse)
         sudo zypper install -y python3-pipx python3-qt6 pipewire pipewire-tools
