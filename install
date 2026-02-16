@@ -74,3 +74,4 @@ else
     echo "✅ Installation complete!"
     echo "💡 You can now find 'Pipewire Controller' in your Application Menu."
 fi
+
