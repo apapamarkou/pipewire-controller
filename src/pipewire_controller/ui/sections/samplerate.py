@@ -99,6 +99,7 @@ class SampleRateSection(QWidget):
         self._quantum_combo.setMinimumWidth(100)
         for q in _QUANTUM_VALUES:
             self._quantum_combo.addItem(str(q), q)
+        self._quantum_combo.setCurrentIndex(_QUANTUM_VALUES.index(1024))
         q_col.addWidget(self._quantum_combo)
         q_mode_row = QHBoxLayout()
         self._q_force_rb = QRadioButton("Force")
@@ -162,8 +163,14 @@ class SampleRateSection(QWidget):
                 self._rate_combo.blockSignals(True)
                 self._rate_combo.setCurrentIndex(idx)
                 self._rate_combo.blockSignals(False)
+            if not self._rate_combo_connected:
+                self._rate_combo.currentIndexChanged.connect(self._on_rate_combo_changed)
+                self._rate_combo_connected = True
         else:
             self._rate_auto_rb.setChecked(True)
+            if self._rate_combo_connected:
+                self._rate_combo.currentIndexChanged.disconnect(self._on_rate_combo_changed)
+                self._rate_combo_connected = False
         self._rate_force_rb.blockSignals(False)
         self._rate_auto_rb.blockSignals(False)
 
@@ -194,8 +201,14 @@ class SampleRateSection(QWidget):
                 self._quantum_combo.blockSignals(True)
                 self._quantum_combo.setCurrentIndex(idx)
                 self._quantum_combo.blockSignals(False)
+            if not self._quantum_combo_connected:
+                self._quantum_combo.currentIndexChanged.connect(self._on_quantum_combo_changed)
+                self._quantum_combo_connected = True
         else:
             self._q_auto_rb.setChecked(True)
+            if self._quantum_combo_connected:
+                self._quantum_combo.currentIndexChanged.disconnect(self._on_quantum_combo_changed)
+                self._quantum_combo_connected = False
         self._q_force_rb.blockSignals(False)
         self._q_auto_rb.blockSignals(False)
 

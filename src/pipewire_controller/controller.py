@@ -100,7 +100,26 @@ class AppController:
         self._meter_timer.start(_METER_MS)
 
         # Initial load
+        self._apply_auto_load()
         self._refresh_graph()
+
+    def _apply_auto_load(self) -> None:
+        """Apply active preset force settings on startup if auto_load is enabled."""
+        if not self._config.get("window", {}).get("auto_load", False):
+            return
+        preset = active_preset(self._config)
+        if preset.get("force_rate"):
+            rate = preset.get("samplerate")
+            self._user_force_rate = rate
+            pw_client.set_force_rate(rate)
+        else:
+            pw_client.clear_force_rate()
+        if preset.get("force_quantum"):
+            quantum = preset.get("quantum")
+            self._user_force_quantum = quantum
+            pw_client.set_force_quantum(quantum)
+        else:
+            pw_client.clear_force_quantum()
 
     def _build_sections(self) -> None:
         # Devices / I/O
@@ -184,8 +203,7 @@ class AppController:
             settings = _with_force_rate(settings, self._user_force_rate)
         if self._user_force_quantum is not None:
             settings = _with_force_quantum(settings, self._user_force_quantum)
-
-        self._devices_section.update_graph(graph)
+        self._devices_section.update_graph(graph, settings)
         self._rate_section.update_settings(settings)
         self._latency_section.update_settings(settings)
         self._update_meter_channels(graph)
@@ -453,31 +471,31 @@ class AppController:
 
     def _on_force_rate(self, rate: int) -> None:
         self._user_force_rate = rate
-        self._refresh_graph()
         if not pw_client.set_force_rate(rate):
             log.error("Failed to force rate %d", rate)
         else:
             log.info("Forced rate: %d Hz", rate)
+        self._refresh_graph()
 
     def _on_auto_rate(self) -> None:
         self._user_force_rate = None
-        self._refresh_graph()
         if pw_client.clear_force_rate():
             log.info("Rate returned to auto")
+        self._refresh_graph()
 
     def _on_force_quantum(self, quantum: int) -> None:
         self._user_force_quantum = quantum
-        self._refresh_graph()
         if not pw_client.set_force_quantum(quantum):
             log.error("Failed to force quantum %d", quantum)
         else:
             log.info("Forced quantum: %d", quantum)
+        self._refresh_graph()
 
     def _on_auto_quantum(self) -> None:
         self._user_force_quantum = None
-        self._refresh_graph()
         if pw_client.clear_force_quantum():
             log.info("Quantum returned to auto")
+        self._refresh_graph()
 
     # ── Latency ───────────────────────────────────────────────────────────────
 
@@ -504,10 +522,11 @@ class AppController:
     def _on_save_config(self) -> None:
         preset = active_preset(self._config)
         if self._graph:
-            preset["samplerate"] = self._graph.settings.rate
-            preset["quantum"] = self._graph.settings.quantum
-            preset["force_rate"] = self._graph.settings.rate_is_forced
-            preset["force_quantum"] = self._graph.settings.quantum_is_forced
+            s = self._graph.settings
+            preset["samplerate"] = self._user_force_rate or s.rate
+            preset["quantum"] = self._user_force_quantum or s.quantum
+            preset["force_rate"] = self._user_force_rate is not None
+            preset["force_quantum"] = self._user_force_quantum is not None
         preset["panel_width"] = self._panel.width()
         save_preset(self._config, preset)
         save(self._config)
@@ -530,4 +549,20 @@ class AppController:
         self._config["active_preset"] = name
         save(self._config)
         self._populate_config_section()
+        preset = active_preset(self._config)
+        if preset.get("force_rate"):
+            rate = preset.get("samplerate")
+            self._user_force_rate = rate
+            pw_client.set_force_rate(rate)
+        else:
+            self._user_force_rate = None
+            pw_client.clear_force_rate()
+        if preset.get("force_quantum"):
+            quantum = preset.get("quantum")
+            self._user_force_quantum = quantum
+            pw_client.set_force_quantum(quantum)
+        else:
+            self._user_force_quantum = None
+            pw_client.clear_force_quantum()
+        self._refresh_graph()
         log.info("Loaded configuration: %s", name)

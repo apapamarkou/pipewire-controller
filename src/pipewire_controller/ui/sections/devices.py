@@ -206,6 +206,12 @@ class NodeWidget(QWidget):
         self._vol_slider.setValue(int(node.volume * 100))
         self._vol_slider.blockSignals(False)
         self._mute_btn.setText("🔇" if node.muted else "🔊")
+        # Refresh rate support label
+        layout = self.layout()
+        old = layout.itemAt(layout.count() - 1).widget()
+        if old:
+            old.deleteLater()
+        layout.addWidget(self._make_rate_label(node.rate_support(graph_rate)))
 
 
 class DevicesSection(QWidget):
@@ -223,9 +229,9 @@ class DevicesSection(QWidget):
         self._layout.setSpacing(0)
         self._node_widgets: dict[int, NodeWidget] = {}
 
-    def update_graph(self, graph: PipeWireGraph) -> None:
+    def update_graph(self, graph: PipeWireGraph, settings) -> None:
         """Rebuild the device list from a graph snapshot."""
-        graph_rate = graph.settings.rate
+        graph_rate = settings.force_rate if settings.rate_is_forced else settings.rate
 
         while self._layout.count():
             item = self._layout.takeAt(0)

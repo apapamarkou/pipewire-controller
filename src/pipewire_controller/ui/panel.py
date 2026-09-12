@@ -109,8 +109,8 @@ class ControlPanel(QWidget):
         self._resize_start_left = 0
 
         # Skip taskbar / pager — panel should not appear as an app window
-        self.setWindowFlag(Qt.WindowType.WindowDoesNotAcceptFocus, False)
-        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+        self.setWindowFlag(Qt.WindowType.WindowDoesNotAcceptFocus, True)
 
         self._build_ui()
         self._restore_geometry()
@@ -189,6 +189,29 @@ class ControlPanel(QWidget):
         w = self._config.get("window", {}).get("width", _DEFAULT_WIDTH)
         w = max(_MIN_WIDTH, min(_MAX_WIDTH, w))
         self.setGeometry(geo.x() + geo.width() - w, geo.y(), w, geo.height())
+        self._set_skip_taskbar()
+
+    def _set_skip_taskbar(self) -> None:
+        """Set _NET_WM_STATE_SKIP_TASKBAR via xprop (XWayland/KDE)."""
+        import subprocess
+
+        wid = self.winId()
+        if not wid:
+            return
+        try:
+            subprocess.Popen(
+                [
+                    "xprop",
+                    "-id", str(int(wid)),
+                    "-f", "_NET_WM_STATE", "32a",
+                    "-set", "_NET_WM_STATE",
+                    "_NET_WM_STATE_SKIP_TASKBAR,_NET_WM_STATE_SKIP_PAGER",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except FileNotFoundError:
+            pass  # xprop not available
 
     def save_geometry(self) -> None:
         self._config.setdefault("window", {})["width"] = self.width()
