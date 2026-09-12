@@ -55,6 +55,7 @@ class ChannelMeterWidget(QWidget):
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(2)
         layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        self.setFixedWidth(40)
 
         self._bar = MeterBar()
         self._bar.setFixedHeight(_BAR_HEIGHT)
@@ -63,12 +64,13 @@ class ChannelMeterWidget(QWidget):
         self._name_lbl = QLabel(self._meter.name or "—")
         self._name_lbl.setStyleSheet(_DIM_STYLE)
         self._name_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._name_lbl.setMaximumWidth(40)
+        self._name_lbl.setFixedWidth(36)
         layout.addWidget(self._name_lbl)
 
         self._level_lbl = QLabel("—")
         self._level_lbl.setStyleSheet(_VALUE_STYLE)
         self._level_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._level_lbl.setFixedWidth(36)
         layout.addWidget(self._level_lbl)
 
         self._over_lbl = QLabel("OVR")
