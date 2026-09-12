@@ -14,6 +14,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QMenu,
     QPushButton,
@@ -35,6 +36,7 @@ _VALUE_STYLE = f"color: {TEXT_PRIMARY}; font-size: 10px; background: transparent
 _OVER_STYLE = f"color: {C_ERROR}; font-size: 10px; font-weight: bold; background: transparent;"
 
 _BAR_HEIGHT = 70  # fixed px — prevents collapse inside QScrollArea
+_WIDGET_WIDTH = 20  # bar(12) + 4px padding each side
 
 
 class ChannelMeterWidget(QWidget):
@@ -55,7 +57,7 @@ class ChannelMeterWidget(QWidget):
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(2)
         layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.setFixedWidth(40)
+        self.setFixedWidth(_WIDGET_WIDTH)
 
         self._bar = MeterBar()
         self._bar.setFixedHeight(_BAR_HEIGHT)
@@ -64,13 +66,13 @@ class ChannelMeterWidget(QWidget):
         self._name_lbl = QLabel(self._meter.name or "—")
         self._name_lbl.setStyleSheet(_DIM_STYLE)
         self._name_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._name_lbl.setFixedWidth(36)
+        self._name_lbl.setFixedWidth(_WIDGET_WIDTH - 4)
         layout.addWidget(self._name_lbl)
 
         self._level_lbl = QLabel("—")
         self._level_lbl.setStyleSheet(_VALUE_STYLE)
         self._level_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._level_lbl.setFixedWidth(36)
+        self._level_lbl.setFixedWidth(_WIDGET_WIDTH - 4)
         layout.addWidget(self._level_lbl)
 
         self._over_lbl = QLabel("OVR")
@@ -101,11 +103,28 @@ class ChannelMeterWidget(QWidget):
         self._over_lbl.setVisible(snap["over"])
         self._name_lbl.setText(snap["name"] or "—")
 
+    def mousePressEvent(self, event) -> None:
+        from PyQt6.QtWidgets import QToolTip
+
+        if event.button() == Qt.MouseButton.LeftButton:
+            QToolTip.showText(event.globalPosition().toPoint(), self._make_tooltip(), self)
+        super().mousePressEvent(event)
+
     def _show_context_menu(self, pos) -> None:
         menu = QMenu(self)
         rename_action = menu.addAction("Rename…")
-        rename_action.triggered.connect(lambda: self.rename_requested.emit(self._meter.name))
+        rename_action.triggered.connect(self._do_rename)
         menu.exec(self.mapToGlobal(pos))
+
+    def _do_rename(self) -> None:
+        new_name, ok = QInputDialog.getText(
+            self, "Rename Channel", "Channel name:", text=self._meter.name
+        )
+        if ok and new_name.strip():
+            self._meter.name = new_name.strip()
+            self._name_lbl.setText(self._meter.name)
+            self.setToolTip(self._make_tooltip())
+            self.rename_requested.emit(self._meter.name)
 
 
 class MeterSection(QWidget):

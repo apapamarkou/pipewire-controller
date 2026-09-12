@@ -192,18 +192,28 @@ class MasterMeterSection(QWidget):
         lufs_i: float | None = None,
     ) -> None:
         """Update all meter bars and LUFS display. Call from GUI thread."""
+        active_peaks: list[float] = []
+        active_rms: list[float] = []
         for i, bar in enumerate(self._meter_bars):
+            # Skip channels mapped to None
+            if i < len(self._channel_combos):
+                if self._channel_combos[i].currentText() == "— None —":
+                    bar.set_level(-120.0, -120.0, False)
+                    continue
             if i < len(peaks_db):
                 bar.set_level(
                     peaks_db[i],
                     peak_holds_db[i] if i < len(peak_holds_db) else peaks_db[i],
                     overs[i] if i < len(overs) else False,
                 )
+                active_peaks.append(peaks_db[i])
+                if i < len(rms_db):
+                    active_rms.append(rms_db[i])
 
-        if peaks_db:
-            self._peak_lbl.setText(f"{max(peaks_db):.1f} dBFS")
-        if rms_db:
-            self._rms_lbl.setText(f"{max(rms_db):.1f} dBFS")
+        if active_peaks:
+            self._peak_lbl.setText(f"{max(active_peaks):.1f} dBFS")
+        if active_rms:
+            self._rms_lbl.setText(f"{max(active_rms):.1f} dBFS")
 
         self._lufsm_lbl.setText(f"{lufs_m:.1f} LUFS" if lufs_m is not None else "—")
         self._lufss_lbl.setText(f"{lufs_s:.1f} LUFS" if lufs_s is not None else "—")
