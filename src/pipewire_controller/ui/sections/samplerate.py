@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
+    QButtonGroup,
     QComboBox,
     QHBoxLayout,
     QLabel,
@@ -24,7 +25,7 @@ from PyQt6.QtWidgets import (
 
 from ...log import get_logger
 from ...pipewire.model import GraphSettings
-from ..theme import C_OK, C_WARN, TEXT_DIM, TEXT_LABEL, TEXT_PRIMARY, TEXT_SECONDARY
+from ..theme import C_OK, TEXT_DIM, TEXT_LABEL, TEXT_PRIMARY, TEXT_SECONDARY
 
 log = get_logger("ui.samplerate")
 
@@ -48,6 +49,8 @@ class SampleRateSection(QWidget):
         super().__init__(parent)
         self._available_rates: list[int] = list(_FALLBACK_RATES)
         self._settings: GraphSettings | None = None
+        self._rate_combo_connected = False
+        self._quantum_combo_connected = False
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -71,6 +74,9 @@ class SampleRateSection(QWidget):
         self._rate_force_rb = QRadioButton("Force")
         self._rate_auto_rb = QRadioButton("Auto")
         self._rate_auto_rb.setChecked(True)
+        self._rate_group = QButtonGroup(self)
+        self._rate_group.addButton(self._rate_force_rb)
+        self._rate_group.addButton(self._rate_auto_rb)
         for rb in (self._rate_force_rb, self._rate_auto_rb):
             rb.setStyleSheet(f"color: {TEXT_SECONDARY}; font-size: 11px; background: transparent;")
             mode_row.addWidget(rb)
@@ -102,6 +108,9 @@ class SampleRateSection(QWidget):
         self._q_force_rb = QRadioButton("Force")
         self._q_auto_rb = QRadioButton("Auto")
         self._q_auto_rb.setChecked(True)
+        self._quantum_group = QButtonGroup(self)
+        self._quantum_group.addButton(self._q_force_rb)
+        self._quantum_group.addButton(self._q_auto_rb)
         for rb in (self._q_force_rb, self._q_auto_rb):
             rb.setStyleSheet(f"color: {TEXT_SECONDARY}; font-size: 11px; background: transparent;")
             q_mode_row.addWidget(rb)
@@ -164,13 +173,16 @@ class SampleRateSection(QWidget):
         # Actual rate display
         if settings.rate_is_forced:
             actual_matches = settings.rate == settings.force_rate
-            color = C_OK if actual_matches else C_WARN
+            if actual_matches:
+                color = C_OK
+                text = f"Active: {settings.rate} Hz"
+            else:
+                color = TEXT_DIM
+                text = f"Forced: {settings.force_rate} Hz  (idle: {settings.rate} Hz)"
             self._rate_actual_lbl.setStyleSheet(
                 f"color: {color}; font-size: 10px; background: transparent;"
             )
-            self._rate_actual_lbl.setText(
-                f"Requested: {settings.force_rate} Hz  Actual: {settings.rate} Hz"
-            )
+            self._rate_actual_lbl.setText(text)
         else:
             self._rate_actual_lbl.setText(f"Actual: {settings.rate} Hz (auto)")
             self._rate_actual_lbl.setStyleSheet(_DIM_STYLE)
@@ -193,13 +205,16 @@ class SampleRateSection(QWidget):
         # Actual quantum display
         if settings.quantum_is_forced:
             actual_matches = settings.quantum == settings.force_quantum
-            color = C_OK if actual_matches else C_WARN
+            if actual_matches:
+                color = C_OK
+                text = f"Active: {settings.quantum}"
+            else:
+                color = TEXT_DIM
+                text = f"Forced: {settings.force_quantum}  (idle: {settings.quantum})"
             self._quantum_actual_lbl.setStyleSheet(
                 f"color: {color}; font-size: 10px; background: transparent;"
             )
-            self._quantum_actual_lbl.setText(
-                f"Requested: {settings.force_quantum}  Actual: {settings.quantum}"
-            )
+            self._quantum_actual_lbl.setText(text)
         else:
             self._quantum_actual_lbl.setText(f"Actual: {settings.quantum} (auto)")
             self._quantum_actual_lbl.setStyleSheet(_DIM_STYLE)
@@ -212,12 +227,13 @@ class SampleRateSection(QWidget):
             rate = self._rate_combo.currentData()
             if rate:
                 self.rate_force_requested.emit(rate)
-            self._rate_combo.currentIndexChanged.connect(self._on_rate_combo_changed)
+            if not self._rate_combo_connected:
+                self._rate_combo.currentIndexChanged.connect(self._on_rate_combo_changed)
+                self._rate_combo_connected = True
         else:
-            try:
+            if self._rate_combo_connected:
                 self._rate_combo.currentIndexChanged.disconnect(self._on_rate_combo_changed)
-            except RuntimeError:
-                pass
+                self._rate_combo_connected = False
             self.rate_auto_requested.emit()
 
     def _on_rate_combo_changed(self, _idx: int) -> None:
@@ -231,12 +247,13 @@ class SampleRateSection(QWidget):
             q = self._quantum_combo.currentData()
             if q:
                 self.quantum_force_requested.emit(q)
-            self._quantum_combo.currentIndexChanged.connect(self._on_quantum_combo_changed)
+            if not self._quantum_combo_connected:
+                self._quantum_combo.currentIndexChanged.connect(self._on_quantum_combo_changed)
+                self._quantum_combo_connected = True
         else:
-            try:
+            if self._quantum_combo_connected:
                 self._quantum_combo.currentIndexChanged.disconnect(self._on_quantum_combo_changed)
-            except RuntimeError:
-                pass
+                self._quantum_combo_connected = False
             self.quantum_auto_requested.emit()
 
     def _on_quantum_combo_changed(self, _idx: int) -> None:

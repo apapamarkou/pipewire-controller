@@ -105,9 +105,12 @@ class LatencySection(QWidget):
         layout.addWidget(measure_btn)
 
     def update_settings(self, settings: GraphSettings) -> None:
-        self._rate_val.setText(f"{settings.rate} Hz")
-        self._quantum_val.setText(f"{settings.quantum} frames")
-        self._period_val.setText(f"{settings.period_ms:.2f} ms")
+        rate = settings.force_rate if settings.rate_is_forced else settings.rate
+        quantum = settings.force_quantum if settings.quantum_is_forced else settings.quantum
+        period_ms = (quantum / rate * 1000.0) if rate else 0.0
+        self._rate_val.setText(f"{rate} Hz")
+        self._quantum_val.setText(f"{quantum} frames")
+        self._period_val.setText(f"{period_ms:.2f} ms")
 
     def set_measured_sw_rtl(self, ms: float | None) -> None:
         self._sw_rtl_val.setText(f"{ms:.2f} ms" if ms is not None else "—")

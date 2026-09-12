@@ -18,16 +18,32 @@ from PyQt6.QtCore import QTimer
 from .config import active_preset, save, save_preset
 from .log import get_logger
 from .pipewire import pw_client
-from .pipewire.model import PipeWireGraph
+from .pipewire.model import GraphSettings, PipeWireGraph
 from .ui.panel import ControlPanel
 from .ui.sections.config_section import ConfigSection
 from .ui.sections.devices import DevicesSection
 from .ui.sections.latency import LatencySection
+from .ui.sections.master_meter import MasterMeterSection
+from .ui.sections.meters import InputMeterSection, OutputMeterSection
 from .ui.sections.samplerate import SampleRateSection
 
 log = get_logger("controller")
 
 _REFRESH_MS = 2000  # graph refresh interval
+
+
+def _with_force_rate(s: GraphSettings, rate: int) -> GraphSettings:
+    """Return a copy of settings with force_rate overridden."""
+    from dataclasses import replace
+
+    return replace(s, force_rate=rate)
+
+
+def _with_force_quantum(s: GraphSettings, quantum: int) -> GraphSettings:
+    """Return a copy of settings with force_quantum overridden."""
+    from dataclasses import replace
+
+    return replace(s, force_quantum=quantum)
 
 
 class AppController:
@@ -42,9 +58,18 @@ class AppController:
         self._config = config
         self._graph: PipeWireGraph | None = None
 
+        # User intent — independent of what PipeWire reports back.
+        # PipeWire may silently reset force-rate/quantum if unsupported;
+        # we keep the user's choice until they explicitly click Auto.
+        self._user_force_rate: int | None = None  # None = user wants auto
+        self._user_force_quantum: int | None = None  # None = user wants auto
+
         self._devices_section: DevicesSection | None = None
         self._rate_section: SampleRateSection | None = None
         self._latency_section: LatencySection | None = None
+        self._input_meter_section: InputMeterSection | None = None
+        self._output_meter_section: OutputMeterSection | None = None
+        self._master_meter_section: MasterMeterSection | None = None
         self._config_section: ConfigSection | None = None
 
         self._build_sections()
@@ -72,6 +97,21 @@ class AppController:
         lat_accordion = self._panel.add_section("latency", "Latency")
         self._latency_section = LatencySection()
         lat_accordion.add_widget(self._latency_section)
+
+        # Input meters
+        in_accordion = self._panel.add_section("input_meters", "Input Meters")
+        self._input_meter_section = InputMeterSection()
+        in_accordion.add_widget(self._input_meter_section)
+
+        # Output meters
+        out_accordion = self._panel.add_section("output_meters", "Output Meters")
+        self._output_meter_section = OutputMeterSection()
+        out_accordion.add_widget(self._output_meter_section)
+
+        # Master meter
+        master_accordion = self._panel.add_section("master_meter", "Master Meter")
+        self._master_meter_section = MasterMeterSection()
+        master_accordion.add_widget(self._master_meter_section)
 
         # Configuration
         cfg_accordion = self._panel.add_section("configuration", "Configuration")
@@ -116,9 +156,18 @@ class AppController:
         if all_rates:
             self._rate_section.update_available_rates(sorted(all_rates))
 
+        # Overlay user intent: if the user has forced rate/quantum, preserve
+        # that in the UI even if PipeWire silently reset the metadata value
+        # (e.g. device doesn't support the requested rate).
+        settings = graph.settings
+        if self._user_force_rate is not None:
+            settings = _with_force_rate(settings, self._user_force_rate)
+        if self._user_force_quantum is not None:
+            settings = _with_force_quantum(settings, self._user_force_quantum)
+
         self._devices_section.update_graph(graph)
-        self._rate_section.update_settings(graph.settings)
-        self._latency_section.update_settings(graph.settings)
+        self._rate_section.update_settings(settings)
+        self._latency_section.update_settings(settings)
 
     # ── Device handlers ───────────────────────────────────────────────────────
 
@@ -145,28 +194,32 @@ class AppController:
     # ── Sample rate / quantum handlers ────────────────────────────────────────
 
     def _on_force_rate(self, rate: int) -> None:
-        if pw_client.set_force_rate(rate):
-            log.info("Forced rate: %d Hz", rate)
-            QTimer.singleShot(500, self._refresh_graph)
-        else:
+        self._user_force_rate = rate
+        self._refresh_graph()
+        if not pw_client.set_force_rate(rate):
             log.error("Failed to force rate %d", rate)
+        else:
+            log.info("Forced rate: %d Hz", rate)
 
     def _on_auto_rate(self) -> None:
+        self._user_force_rate = None
+        self._refresh_graph()
         if pw_client.clear_force_rate():
             log.info("Rate returned to auto")
-            QTimer.singleShot(500, self._refresh_graph)
 
     def _on_force_quantum(self, quantum: int) -> None:
-        if pw_client.set_force_quantum(quantum):
-            log.info("Forced quantum: %d", quantum)
-            QTimer.singleShot(500, self._refresh_graph)
-        else:
+        self._user_force_quantum = quantum
+        self._refresh_graph()
+        if not pw_client.set_force_quantum(quantum):
             log.error("Failed to force quantum %d", quantum)
+        else:
+            log.info("Forced quantum: %d", quantum)
 
     def _on_auto_quantum(self) -> None:
+        self._user_force_quantum = None
+        self._refresh_graph()
         if pw_client.clear_force_quantum():
             log.info("Quantum returned to auto")
-            QTimer.singleShot(500, self._refresh_graph)
 
     # ── Latency ───────────────────────────────────────────────────────────────
 

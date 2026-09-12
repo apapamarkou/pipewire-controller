@@ -5,12 +5,12 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QLabel,
     QScrollArea,
-    QSizeGrip,
     QVBoxLayout,
     QWidget,
 )
@@ -31,6 +31,7 @@ log = get_logger("panel")
 _MIN_WIDTH = 260
 _MAX_WIDTH = 600
 _DEFAULT_WIDTH = 340
+_RESIZE_MARGIN = 6  # px from left edge that triggers resize drag
 
 
 class ToolbarButton(FlatButton):
@@ -119,6 +120,10 @@ class ControlPanel(QWidget):
         self._floating = config.get("window", {}).get("docked", True) is False
         self._always_on_top = config.get("window", {}).get("always_on_top", False)
         self._pinned = config.get("window", {}).get("pinned", False)
+        self._resizing = False
+        self._resize_start_x = 0
+        self._resize_start_w = 0
+        self._resize_start_left = 0
 
         self._build_ui()
         self._apply_window_flags()
@@ -156,21 +161,14 @@ class ControlPanel(QWidget):
         self._scroll.setWidget(self._content)
         root.addWidget(self._scroll)
 
-        # Resize grip at bottom-left for width adjustment
-        grip_row = QWidget()
-        grip_layout = QHBoxLayout(grip_row)
-        grip_layout.setContentsMargins(2, 0, 2, 2)
-        grip_layout.setSpacing(0)
-        grip = QSizeGrip(self)
-        grip_layout.addWidget(grip, alignment=Qt.AlignmentFlag.AlignLeft)
-        root.addWidget(grip_row)
-
         self._toolbar.set_state(
             floating=self._floating,
             ontop=self._always_on_top,
             pinned=self._pinned,
             autoload=self._config.get("window", {}).get("auto_load", False),
         )
+
+        self.setMouseTracking(True)
 
     def add_section(self, key: str, title: str) -> AccordionSection:
         """Add a named accordion section. Returns the section for content population."""
@@ -237,9 +235,15 @@ class ControlPanel(QWidget):
 
     def _restore_geometry(self) -> None:
         w = self._config.get("window", {}).get("width", _DEFAULT_WIDTH)
-        self.resize(w, 600)
         if not self._floating:
             self._dock_to_right()
+        else:
+            screen = QApplication.primaryScreen()
+            if screen:
+                geo = screen.availableGeometry()
+                self.setGeometry(geo.right() - w, geo.top(), w, geo.height())
+            else:
+                self.resize(w, 600)
 
     def save_geometry(self) -> None:
         self._config.setdefault("window", {})["width"] = self.width()
@@ -251,6 +255,46 @@ class ControlPanel(QWidget):
             self.show()
             self.raise_()
             self.activateWindow()
+
+    def _in_resize_zone(self, x: int) -> bool:
+        return x <= _RESIZE_MARGIN
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self._in_resize_zone(
+            event.position().x()
+        ):
+            self._resizing = True
+            self._resize_start_x = event.globalPosition().x()
+            self._resize_start_w = self.width()
+            self._resize_start_left = self.x()
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:
+        if self._resizing:
+            delta = int(self._resize_start_x - event.globalPosition().x())
+            new_w = max(_MIN_WIDTH, min(_MAX_WIDTH, self._resize_start_w + delta))
+            self.setGeometry(
+                self._resize_start_left + self._resize_start_w - new_w,
+                self.y(),
+                new_w,
+                self.height(),
+            )
+            event.accept()
+        else:
+            if self._in_resize_zone(event.position().x()):
+                self.setCursor(QCursor(Qt.CursorShape.SizeHorCursor))
+            else:
+                self.unsetCursor()
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if self._resizing and event.button() == Qt.MouseButton.LeftButton:
+            self._resizing = False
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
