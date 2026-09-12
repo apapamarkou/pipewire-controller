@@ -160,7 +160,6 @@ class MeterSection(QWidget):
         ctrl.addWidget(self._mode_combo)
 
         clear_btn = QPushButton("CLEAR")
-        clear_btn.setFixedWidth(50)
         clear_btn.clicked.connect(self._on_clear)
         ctrl.addWidget(clear_btn)
         layout.addLayout(ctrl)
@@ -217,6 +216,11 @@ class MeterSection(QWidget):
                 self._channel_widgets[i].update_from_snapshot(snap)
 
     def _on_clear(self) -> None:
+        for w in self._channel_widgets:
+            w._meter.clear()
+            w._bar.set_level(-120.0, -120.0, False)
+            w._level_lbl.setText("—")
+            w._over_lbl.setVisible(False)
         self.clear_requested.emit()
 
 

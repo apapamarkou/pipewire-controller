@@ -224,8 +224,15 @@ class AppController:
             self._last_out_key = out_key
             self._restart_output_capture()
 
-        output_names = [n.display_name for n in graph.sinks]
-        self._master_meter_section.update_available_outputs(output_names)
+        # Per-channel names for master meter: "Device FL", "Device FR", etc.
+        output_channel_names = [
+            f"{n.display_name} {pos}"
+            for n in graph.sinks
+            for pos in (
+                n.channel_positions if n.channel_positions else ["L", "R"][: n.channel_count]
+            )
+        ]
+        self._master_meter_section.update_available_outputs(output_channel_names)
 
     def _restart_output_capture(self) -> None:
         if self._capture_out_proc is not None:
@@ -245,7 +252,11 @@ class AppController:
                 name=f"pipewire-controller-out-{node.id}",
                 channels=ch_count,
                 target=str(node.id),
-                extra_props={"stream.capture.sink": "true", "node.passive": "true"},
+                extra_props={
+                    "stream.capture.sink": "true",
+                    "node.passive": "true",
+                    "node.dont-reconnect": "true",
+                },
             )
             if proc is None:
                 meter_offset += ch_count
@@ -253,7 +264,7 @@ class AppController:
             offset = meter_offset
             t = threading.Thread(
                 target=self._capture_loop_channels,
-                args=(proc, ch_count, offset, self._output_meters),
+                args=(proc, ch_count, offset, "out"),
                 daemon=True,
             )
             t.start()
@@ -274,7 +285,10 @@ class AppController:
                 name=f"pipewire-controller-in-{node.id}",
                 channels=ch_count,
                 target=str(node.id),
-                extra_props={"node.passive": "true"},
+                extra_props={
+                    "node.passive": "true",
+                    "node.dont-reconnect": "true",
+                },
             )
             if proc is None:
                 meter_offset += ch_count
@@ -282,7 +296,7 @@ class AppController:
             offset = meter_offset
             t = threading.Thread(
                 target=self._capture_loop_channels,
-                args=(proc, ch_count, offset, self._input_meters),
+                args=(proc, ch_count, offset, "in"),
                 daemon=True,
             )
             self._capture_in_procs[node.id] = (proc, t)
@@ -354,12 +368,27 @@ class AppController:
         proc: subprocess.Popen,
         ch_count: int,
         meter_offset: int,
-        meter_list: list[ChannelMeter],
+        direction: str,  # "in" or "out"
     ) -> None:
         import numpy as np
 
         bytes_per_frame = ch_count * 4
         chunk = bytes_per_frame * _CAPTURE_FRAMES
+        # After this many consecutive silent blocks, force meters to zero.
+        # At 100ms meter interval and 512 frames @ 48kHz (~10ms/block) that’s ~0.5s of silence.
+        _SILENCE_BLOCKS = 50
+        silent_count = 0
+
+        def _meters():
+            lst = self._input_meters if direction == "in" else self._output_meters
+            with self._capture_lock:
+                return lst[meter_offset : meter_offset + ch_count]
+
+        def _reset():
+            for meter in _meters():
+                meter.peak_linear = 0.0
+                meter.rms_linear = 0.0
+
         while proc.poll() is None:
             data = proc.stdout.read(chunk)
             if not data:
@@ -369,10 +398,19 @@ class AppController:
                 continue
             samples = np.frombuffer(data[: n_frames * bytes_per_frame], dtype=np.float32)
             samples = samples.reshape(-1, ch_count)
-            with self._capture_lock:
-                meters = meter_list[meter_offset : meter_offset + ch_count]
-            for i, meter in enumerate(meters):
+            # Detect silence: all samples below noise floor
+            if np.max(np.abs(samples)) < 1e-6:
+                silent_count += 1
+                if silent_count >= _SILENCE_BLOCKS:
+                    _reset()
+                    silent_count = 0
+                continue
+            silent_count = 0
+            for i, meter in enumerate(_meters()):
                 meter.process_block(samples[:, i])
+
+        # Process ended — reset to silence
+        _reset()
 
     def _push_meter_snapshots(self) -> None:
         with self._capture_lock:

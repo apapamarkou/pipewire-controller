@@ -46,6 +46,39 @@ _NODE_WIDGET_STYLE = (
 )
 
 
+class _TrackingSlider(QSlider):
+    """Horizontal slider that keeps tracking even when the mouse leaves the widget."""
+
+    def mousePressEvent(self, event) -> None:
+        self.grabMouse()
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        self.releaseMouse()
+        super().mouseReleaseEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:
+        # Clamp the position to the widget's range before passing to the base class
+        from PyQt6.QtCore import QPoint
+
+        clamped = QPoint(
+            max(0, min(self.width(), event.position().toPoint().x())),
+            event.position().toPoint().y(),
+        )
+        from PyQt6.QtCore import QPointF
+        from PyQt6.QtGui import QMouseEvent
+
+        clamped_event = QMouseEvent(
+            event.type(),
+            QPointF(clamped),
+            event.globalPosition(),
+            event.button(),
+            event.buttons(),
+            event.modifiers(),
+        )
+        super().mouseMoveEvent(clamped_event)
+
+
 class NodeWidget(QWidget):
     """Compact row for a single audio node."""
 
@@ -109,7 +142,7 @@ class NodeWidget(QWidget):
         )
         self._mute_btn.clicked.connect(self._toggle_mute)
 
-        self._vol_slider = QSlider(Qt.Orientation.Horizontal)
+        self._vol_slider = _TrackingSlider(Qt.Orientation.Horizontal)
         self._vol_slider.setRange(0, 100)
         self._vol_slider.setValue(int(self._node.volume * 100))
         self._vol_slider.setFixedHeight(14)

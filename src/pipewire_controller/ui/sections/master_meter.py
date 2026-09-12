@@ -195,20 +195,27 @@ class MasterMeterSection(QWidget):
         active_peaks: list[float] = []
         active_rms: list[float] = []
         for i, bar in enumerate(self._meter_bars):
-            # Skip channels mapped to None
-            if i < len(self._channel_combos):
-                if self._channel_combos[i].currentText() == "— None —":
-                    bar.set_level(-120.0, -120.0, False)
-                    continue
-            if i < len(peaks_db):
+            selected = (
+                self._channel_combos[i].currentText() if i < len(self._channel_combos) else ""
+            )
+            if selected == "— None —" or not selected:
+                bar.set_level(-120.0, -120.0, False)
+                continue
+            # Find the index of the selected channel name in available outputs
+            try:
+                src_idx = self._available_outputs.index(selected)
+            except ValueError:
+                bar.set_level(-120.0, -120.0, False)
+                continue
+            if src_idx < len(peaks_db):
                 bar.set_level(
-                    peaks_db[i],
-                    peak_holds_db[i] if i < len(peak_holds_db) else peaks_db[i],
-                    overs[i] if i < len(overs) else False,
+                    peaks_db[src_idx],
+                    peak_holds_db[src_idx] if src_idx < len(peak_holds_db) else peaks_db[src_idx],
+                    overs[src_idx] if src_idx < len(overs) else False,
                 )
-                active_peaks.append(peaks_db[i])
-                if i < len(rms_db):
-                    active_rms.append(rms_db[i])
+                active_peaks.append(peaks_db[src_idx])
+                if src_idx < len(rms_db):
+                    active_rms.append(rms_db[src_idx])
 
         if active_peaks:
             self._peak_lbl.setText(f"{max(active_peaks):.1f} dBFS")

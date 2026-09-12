@@ -273,24 +273,55 @@ def _get_defaults() -> tuple[int | None, int | None]:
     return sink_id, source_id
 
 
+def _set_default_device(node_id: int, is_sink: bool) -> bool:
+    """
+    Set the default audio sink or source.
+
+    WirePlumber overrides wpctl set-default via its session policy unless we
+    also update default.configured.audio.{sink,source} in the 'default'
+    metadata namespace. We set both keys so the change persists.
+    """
+    kind = "sink" if is_sink else "source"
+    # Look up node.name from pw-dump
+    node_name: str | None = None
+    try:
+        raw = _run_check(["pw-dump"])
+        data = json.loads(raw)
+        for obj in data:
+            if obj.get("id") == node_id:
+                node_name = obj.get("info", {}).get("props", {}).get("node.name")
+                break
+    except Exception:
+        pass
+
+    try:
+        # Set session default via wpctl
+        _run_check(["wpctl", "set-default", str(node_id)])
+    except Exception as exc:
+        log.error("set_default_%s(%d) wpctl failed: %s", kind, node_id, exc)
+        return False
+
+    if node_name:
+        # Also update the configured default so WirePlumber doesn't revert it
+        name_json = json.dumps({"name": node_name})
+        for key in (f"default.configured.audio.{kind}", f"default.audio.{kind}"):
+            try:
+                _run_check(["pw-metadata", "-n", "default", "0", key, name_json])
+            except Exception as exc:
+                log.warning("set_default_%s metadata %s failed: %s", kind, key, exc)
+
+    log.info("Default %s set to %d (%s)", kind, node_id, node_name or "?")
+    return True
+
+
 def set_default_sink(node_id: int) -> bool:
     """Set the default audio sink."""
-    try:
-        _run_check(["wpctl", "set-default", str(node_id)])
-        return True
-    except Exception as exc:
-        log.error("set_default_sink(%d) failed: %s", node_id, exc)
-        return False
+    return _set_default_device(node_id, is_sink=True)
 
 
 def set_default_source(node_id: int) -> bool:
     """Set the default audio source."""
-    try:
-        _run_check(["wpctl", "set-default", str(node_id)])
-        return True
-    except Exception as exc:
-        log.error("set_default_source(%d) failed: %s", node_id, exc)
-        return False
+    return _set_default_device(node_id, is_sink=False)
 
 
 # ── Volume / mute ─────────────────────────────────────────────────────────────
