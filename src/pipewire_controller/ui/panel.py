@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2024 Andrianos Papamarkou
-"""Main control panel — docked/floating side panel."""
+"""Main control panel — right-edge side panel."""
 
 from __future__ import annotations
 
@@ -28,9 +28,9 @@ from .theme import (
 
 log = get_logger("panel")
 
-_MIN_WIDTH = 260
-_MAX_WIDTH = 600
-_DEFAULT_WIDTH = 340
+_MIN_WIDTH = 400
+_MAX_WIDTH = 800
+_DEFAULT_WIDTH = 420
 _RESIZE_MARGIN = 6  # px from left edge that triggers resize drag
 
 
@@ -48,9 +48,6 @@ class ToolbarButton(FlatButton):
 class PanelToolbar(QWidget):
     """Top toolbar with panel control buttons."""
 
-    float_toggled = pyqtSignal(bool)
-    pin_toggled = pyqtSignal(bool)
-    ontop_toggled = pyqtSignal(bool)
     autoload_toggled = pyqtSignal(bool)
     info_requested = pyqtSignal()
 
@@ -67,66 +64,55 @@ class PanelToolbar(QWidget):
         layout.addWidget(title)
         layout.addStretch()
 
-        self._btn_float = ToolbarButton("⊞", "Floating / Docked", checkable=True)
-        self._btn_ontop = ToolbarButton("⊤", "Always on top", checkable=True)
-        self._btn_pin = ToolbarButton("⊕", "Pin (keep visible)", checkable=True)
         self._btn_auto = ToolbarButton("⟳", "Auto-load config on startup", checkable=True)
         self._btn_info = ToolbarButton("ℹ", "System info")
 
-        for btn in (
-            self._btn_float,
-            self._btn_ontop,
-            self._btn_pin,
-            self._btn_auto,
-            self._btn_info,
-        ):
+        for btn in (self._btn_auto, self._btn_info):
             layout.addWidget(btn)
 
-        self._btn_float.toggled.connect(self.float_toggled)
-        self._btn_ontop.toggled.connect(self.ontop_toggled)
-        self._btn_pin.toggled.connect(self.pin_toggled)
         self._btn_auto.toggled.connect(self.autoload_toggled)
         self._btn_info.clicked.connect(self.info_requested)
 
         self.setStyleSheet(f"background-color: {BG_PANEL}; border-bottom: 1px solid {BORDER};")
         self.setFixedHeight(30)
 
-    def set_state(self, floating: bool, ontop: bool, pinned: bool, autoload: bool) -> None:
-        for btn, val in (
-            (self._btn_float, floating),
-            (self._btn_ontop, ontop),
-            (self._btn_pin, pinned),
-            (self._btn_auto, autoload),
-        ):
-            btn.blockSignals(True)
-            btn.setChecked(val)
-            btn.blockSignals(False)
+    def set_state(self, autoload: bool) -> None:
+        self._btn_auto.blockSignals(True)
+        self._btn_auto.setChecked(autoload)
+        self._btn_auto.blockSignals(False)
 
 
 class ControlPanel(QWidget):
     """
-    Main control panel widget.
+    Main control panel — frameless, right-edge, hides on focus loss.
 
-    Can be docked to the right edge of the screen or float freely.
-    Contains a scrollable area of accordion sections.
+    On Wayland the compositor controls placement so we request the right
+    edge position after show() via reposition(). Always-on-top and docking
+    are not reliably available on Wayland; hide-on-focus-loss replaces them.
     """
 
     closed = pyqtSignal()
 
     def __init__(self, config: dict, parent: QWidget | None = None) -> None:
-        super().__init__(parent, Qt.WindowType.Tool)
+        super().__init__(
+            parent,
+            Qt.WindowType.Tool
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint,
+        )
         self._config = config
         self._sections: dict[str, AccordionSection] = {}
-        self._floating = config.get("window", {}).get("docked", True) is False
-        self._always_on_top = config.get("window", {}).get("always_on_top", False)
-        self._pinned = config.get("window", {}).get("pinned", False)
+        self._hide_on_focus_loss = config.get("window", {}).get("hide_on_focus_loss", True)
         self._resizing = False
         self._resize_start_x = 0
         self._resize_start_w = 0
         self._resize_start_left = 0
 
+        # Skip taskbar / pager — panel should not appear as an app window
+        self.setWindowFlag(Qt.WindowType.WindowDoesNotAcceptFocus, False)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, False)
+
         self._build_ui()
-        self._apply_window_flags()
         self._restore_geometry()
 
     def _build_ui(self) -> None:
@@ -139,14 +125,10 @@ class ControlPanel(QWidget):
         root.setSpacing(0)
 
         self._toolbar = PanelToolbar()
-        self._toolbar.float_toggled.connect(self._on_float_toggled)
-        self._toolbar.ontop_toggled.connect(self._on_ontop_toggled)
-        self._toolbar.pin_toggled.connect(self._on_pin_toggled)
         self._toolbar.autoload_toggled.connect(self._on_autoload_toggled)
         self._toolbar.info_requested.connect(self._on_info_requested)
         root.addWidget(self._toolbar)
 
-        # Scrollable content area
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -162,24 +144,17 @@ class ControlPanel(QWidget):
         root.addWidget(self._scroll)
 
         self._toolbar.set_state(
-            floating=self._floating,
-            ontop=self._always_on_top,
-            pinned=self._pinned,
             autoload=self._config.get("window", {}).get("auto_load", False),
         )
 
         self.setMouseTracking(True)
 
     def add_section(self, key: str, title: str) -> AccordionSection:
-        """Add a named accordion section. Returns the section for content population."""
         section = AccordionSection(title)
-        # Restore expanded state from config
         accordion_state = self._config.get("window", {}).get("accordion_state", {})
         expanded = accordion_state.get(key, True)
         section.set_expanded(expanded)
         section.toggled.connect(lambda exp, k=key: self._on_section_toggled(k, exp))
-
-        # Insert before the trailing stretch
         count = self._content_layout.count()
         self._content_layout.insertWidget(count - 1, section)
         self._sections[key] = section
@@ -191,22 +166,6 @@ class ControlPanel(QWidget):
     def _on_section_toggled(self, key: str, expanded: bool) -> None:
         self._config.setdefault("window", {}).setdefault("accordion_state", {})[key] = expanded
 
-    def _on_float_toggled(self, floating: bool) -> None:
-        self._floating = floating
-        self._config.setdefault("window", {})["docked"] = not floating
-        self._apply_window_flags()
-        if not floating:
-            self.reposition()
-
-    def _on_ontop_toggled(self, ontop: bool) -> None:
-        self._always_on_top = ontop
-        self._config.setdefault("window", {})["always_on_top"] = ontop
-        self._apply_window_flags()
-
-    def _on_pin_toggled(self, pinned: bool) -> None:
-        self._pinned = pinned
-        self._config.setdefault("window", {})["pinned"] = pinned
-
     def _on_autoload_toggled(self, autoload: bool) -> None:
         self._config.setdefault("window", {})["auto_load"] = autoload
 
@@ -216,34 +175,19 @@ class ControlPanel(QWidget):
         dlg = SystemInfoDialog(self)
         dlg.exec()
 
-    def _apply_window_flags(self) -> None:
-        flags = Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint
-        if self._always_on_top:
-            flags |= Qt.WindowType.WindowStaysOnTopHint
-        was_visible = self.isVisible()
-        self.setWindowFlags(flags)
-        if was_visible:
-            self.show()
-
-    def _dock_to_right(self) -> None:
-        screen = QApplication.primaryScreen()
-        if screen is None:
-            return
-        geo = screen.availableGeometry()
-        w = self._config.get("window", {}).get("width", _DEFAULT_WIDTH)
-        self.setGeometry(geo.right() - w, geo.top(), w, geo.height())
-
     def _restore_geometry(self) -> None:
         w = self._config.get("window", {}).get("width", _DEFAULT_WIDTH)
-        self.resize(w, 800)  # initial size; reposition() called after show()
+        w = max(_MIN_WIDTH, min(_MAX_WIDTH, w))
+        self.resize(w, 800)
 
     def reposition(self) -> None:
-        """Position the panel at the right edge. Call after show() for Wayland compatibility."""
+        """Position at right edge of primary screen. Call after show() on Wayland."""
         screen = QApplication.primaryScreen()
         if screen is None:
             return
         geo = screen.availableGeometry()
         w = self._config.get("window", {}).get("width", _DEFAULT_WIDTH)
+        w = max(_MIN_WIDTH, min(_MAX_WIDTH, w))
         self.setGeometry(geo.x() + geo.width() - w, geo.y(), w, geo.height())
 
     def save_geometry(self) -> None:
@@ -256,8 +200,27 @@ class ControlPanel(QWidget):
             self.show()
             self.raise_()
             self.activateWindow()
-            if not self._floating:
-                QTimer.singleShot(0, self.reposition)
+            QTimer.singleShot(0, self.reposition)
+
+    # ── Focus loss → hide ─────────────────────────────────────────────────────
+
+    def changeEvent(self, event) -> None:
+        super().changeEvent(event)
+        from PyQt6.QtCore import QEvent
+
+        if (
+            event.type() == QEvent.Type.ActivationChange
+            and not self.isActiveWindow()
+            and self._hide_on_focus_loss
+        ):
+            # Small delay so clicks on tray icon don't cause immediate re-hide
+            QTimer.singleShot(150, self._hide_if_inactive)
+
+    def _hide_if_inactive(self) -> None:
+        if not self.isActiveWindow():
+            self.hide()
+
+    # ── Left-edge resize ──────────────────────────────────────────────────────
 
     def _in_resize_zone(self, x: int) -> bool:
         return x <= _RESIZE_MARGIN
@@ -304,8 +267,5 @@ class ControlPanel(QWidget):
         self._config.setdefault("window", {})["width"] = self.width()
 
     def closeEvent(self, event) -> None:
-        if self._pinned:
-            event.ignore()
-            return
-        event.accept()
-        self.closed.emit()
+        event.ignore()
+        self.hide()
