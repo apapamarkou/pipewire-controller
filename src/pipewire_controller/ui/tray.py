@@ -91,6 +91,8 @@ class TrayApp(QApplication):
 
         self._panel.show()
         self._panel.raise_()
+        # Wayland doesn't honour setGeometry before show(); reposition after event loop tick
+        QTimer.singleShot(0, self._panel.reposition)
 
     def _toggle_panel(self) -> None:
         if self._panel is None:

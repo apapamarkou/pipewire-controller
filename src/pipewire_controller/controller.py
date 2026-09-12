@@ -17,6 +17,7 @@ from PyQt6.QtCore import QTimer
 
 from .config import active_preset, save, save_preset
 from .log import get_logger
+from .metering import ChannelMeter
 from .pipewire import pw_client
 from .pipewire.model import GraphSettings, PipeWireGraph
 from .ui.panel import ControlPanel
@@ -168,6 +169,38 @@ class AppController:
         self._devices_section.update_graph(graph)
         self._rate_section.update_settings(settings)
         self._latency_section.update_settings(settings)
+        self._update_meter_channels(graph)
+
+    # ── Meter channel population ──────────────────────────────────────────────
+
+    def _update_meter_channels(self, graph) -> None:
+        def _meters_for_nodes(nodes):
+            result = []
+            for n in nodes:
+                positions = (
+                    n.channel_positions if n.channel_positions else ["L", "R"][: n.channel_count]
+                )
+                for i, pos in enumerate(positions):
+                    result.append(
+                        ChannelMeter(name=pos, node_name=n.display_name, channel_number=i)
+                    )
+            return result
+
+        input_meters = _meters_for_nodes(graph.sources)
+        output_meters = _meters_for_nodes(graph.sinks)
+
+        # Only rebuild widgets when channel layout changes
+        in_key = [(m.name, m.node_name) for m in input_meters]
+        out_key = [(m.name, m.node_name) for m in output_meters]
+        if in_key != getattr(self, "_last_in_key", None):
+            self._input_meter_section.set_channels(input_meters)
+            self._last_in_key = in_key
+        if out_key != getattr(self, "_last_out_key", None):
+            self._output_meter_section.set_channels(output_meters)
+            self._last_out_key = out_key
+
+        output_names = [n.display_name for n in graph.sinks]
+        self._master_meter_section.update_available_outputs(output_names)
 
     # ── Device handlers ───────────────────────────────────────────────────────
 

@@ -196,7 +196,7 @@ class ControlPanel(QWidget):
         self._config.setdefault("window", {})["docked"] = not floating
         self._apply_window_flags()
         if not floating:
-            self._dock_to_right()
+            self.reposition()
 
     def _on_ontop_toggled(self, ontop: bool) -> None:
         self._always_on_top = ontop
@@ -235,15 +235,16 @@ class ControlPanel(QWidget):
 
     def _restore_geometry(self) -> None:
         w = self._config.get("window", {}).get("width", _DEFAULT_WIDTH)
-        if not self._floating:
-            self._dock_to_right()
-        else:
-            screen = QApplication.primaryScreen()
-            if screen:
-                geo = screen.availableGeometry()
-                self.setGeometry(geo.right() - w, geo.top(), w, geo.height())
-            else:
-                self.resize(w, 600)
+        self.resize(w, 800)  # initial size; reposition() called after show()
+
+    def reposition(self) -> None:
+        """Position the panel at the right edge. Call after show() for Wayland compatibility."""
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return
+        geo = screen.availableGeometry()
+        w = self._config.get("window", {}).get("width", _DEFAULT_WIDTH)
+        self.setGeometry(geo.right() - w, geo.top(), w, geo.height())
 
     def save_geometry(self) -> None:
         self._config.setdefault("window", {})["width"] = self.width()

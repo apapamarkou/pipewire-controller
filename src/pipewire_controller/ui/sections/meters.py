@@ -159,10 +159,12 @@ class MeterSection(QWidget):
 
         scroll.setWidget(self._meters_widget)
         layout.addWidget(scroll)
+        self._scroll = scroll
 
-        self._empty_lbl = QLabel("No channels available")
+        self._empty_lbl = QLabel("No channels — connect an audio device")
         self._empty_lbl.setStyleSheet(_DIM_STYLE)
         layout.addWidget(self._empty_lbl)
+        self._empty_lbl.setVisible(True)
 
     def set_channels(self, meters: list[ChannelMeter]) -> None:
         """Rebuild channel widgets from a list of ChannelMeter objects."""
@@ -179,6 +181,7 @@ class MeterSection(QWidget):
             self._channel_widgets.append(w)
 
         self._empty_lbl.setVisible(len(meters) == 0)
+        self._scroll.setVisible(len(meters) > 0)
 
     def update_meters(self, snapshots: list[dict]) -> None:
         """Update meter displays from pre-processed snapshots. Call from GUI thread."""

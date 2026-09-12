@@ -236,20 +236,30 @@ def _get_defaults() -> tuple[int | None, int | None]:
     source_id: int | None = None
     try:
         out = _run_check(["wpctl", "status"])
+        in_audio = False
         in_sinks = False
         in_sources = False
         for line in out.splitlines():
+            # Only parse the Audio section
+            if line.startswith("Audio"):
+                in_audio = True
+                continue
+            if in_audio and line and not line[0].isspace() and not line.startswith(" "):
+                break  # left the Audio section (e.g. "Video")
+            if not in_audio:
+                continue
             if "Sinks:" in line:
                 in_sinks = True
                 in_sources = False
-            elif "Sources:" in line:
+                continue
+            if "Sources:" in line:
                 in_sources = True
                 in_sinks = False
-            elif line.strip().startswith("├─") or line.strip().startswith("└─"):
-                if "Sinks:" not in line and "Sources:" not in line:
-                    in_sinks = False
-                    in_sources = False
-
+                continue
+            if "Filters:" in line or "Streams:" in line:
+                in_sinks = False
+                in_sources = False
+                continue
             if (in_sinks or in_sources) and "*" in line:
                 m = re.search(r"\*\s+(\d+)\.", line)
                 if m:
