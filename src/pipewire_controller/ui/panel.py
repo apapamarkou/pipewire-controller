@@ -225,10 +225,11 @@ class ControlPanel(QWidget):
         if self.isVisible():
             self.hide()
         else:
+            self._hide_on_focus_loss = False
             self.show()
             self.raise_()
-            self.activateWindow()
             QTimer.singleShot(0, self.reposition)
+            QTimer.singleShot(300, self._enable_focus_loss_hide)
 
     # ── Focus loss → hide ─────────────────────────────────────────────────────
 
@@ -243,6 +244,9 @@ class ControlPanel(QWidget):
         ):
             # Small delay so clicks on tray icon don't cause immediate re-hide
             QTimer.singleShot(150, self._hide_if_inactive)
+
+    def _enable_focus_loss_hide(self) -> None:
+        self._hide_on_focus_loss = self._config.get("window", {}).get("hide_on_focus_loss", True)
 
     def _hide_if_inactive(self) -> None:
         if not self.isActiveWindow():

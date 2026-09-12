@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtCore import QTimer
+from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
@@ -35,6 +36,10 @@ def _find_icon() -> QIcon:
     return QIcon.fromTheme("audio-card", QIcon.fromTheme("multimedia-volume-control"))
 
 
+_SOCKET_NAME = "pipewire-controller"
+_MSG_TOGGLE = b"toggle"
+
+
 class TrayApp(QApplication):
     """Main application — lives in the system tray."""
 
@@ -56,6 +61,11 @@ class TrayApp(QApplication):
         self._tray.setContextMenu(self._build_tray_menu())
         self._tray.activated.connect(self._on_tray_activated)
         self._tray.show()
+
+        self._server = QLocalServer(self)
+        self._server.newConnection.connect(self._on_ipc_connection)
+        QLocalServer.removeServer(_SOCKET_NAME)
+        self._server.listen(_SOCKET_NAME)
 
         QTimer.singleShot(0, self._init_panel)
         self.aboutToQuit.connect(self._on_quit)
@@ -79,6 +89,13 @@ class TrayApp(QApplication):
         quit_action.triggered.connect(self.quit)
         return menu
 
+    def _on_ipc_connection(self) -> None:
+        conn = self._server.nextPendingConnection()
+        conn.waitForReadyRead(200)
+        if conn.readAll() == _MSG_TOGGLE:
+            self._toggle_panel()
+        conn.deleteLater()
+
     def _init_panel(self) -> None:
         self._panel = ControlPanel(self._config)
         self._shortcuts = ShortcutManager(self._panel)
@@ -89,9 +106,7 @@ class TrayApp(QApplication):
 
         self._controller = AppController(self._panel, self._config)
 
-        self._panel.show()
-        self._panel.raise_()
-        # Wayland doesn't honour setGeometry before show(); reposition after event loop tick
+        # Start with panel hidden; subsequent launches toggle via IPC
         QTimer.singleShot(0, self._panel.reposition)
 
     def _toggle_panel(self) -> None:
@@ -111,10 +126,13 @@ class TrayApp(QApplication):
         dlg.exec()
 
     def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
-        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+        if reason in (QSystemTrayIcon.ActivationReason.Trigger,
+                      QSystemTrayIcon.ActivationReason.MiddleClick):
             self._toggle_panel()
 
     def _on_quit(self) -> None:
+        self._server.close()
+        QLocalServer.removeServer(_SOCKET_NAME)
         if self._controller is not None:
             self._controller.shutdown()
         if self._panel is not None:
@@ -123,10 +141,30 @@ class TrayApp(QApplication):
         log.info("Application quit, config saved")
 
 
+def _send_toggle() -> bool:
+    """Send toggle to a running instance. Returns True if delivered."""
+    sock = QLocalSocket()
+    sock.connectToServer(_SOCKET_NAME)
+    if not sock.waitForConnected(500):
+        return False
+    sock.write(_MSG_TOGGLE)
+    sock.waitForBytesWritten(500)
+    sock.disconnectFromServer()
+    return True
+
+
 def run(argv: list[str] | None = None) -> int:
     """Entry point."""
     setup_logging()
     if argv is None:
         argv = sys.argv
-    app = TrayApp(argv)
-    return app.exec()
+    # Check for existing instance before creating QApplication
+    # QLocalSocket needs a QCoreApplication; use a temporary one
+    from PyQt6.QtCore import QCoreApplication
+    tmp = QCoreApplication(argv)
+    already_running = _send_toggle()
+    del tmp
+    if already_running:
+        return 0
+    tray = TrayApp(argv)
+    return tray.exec()
