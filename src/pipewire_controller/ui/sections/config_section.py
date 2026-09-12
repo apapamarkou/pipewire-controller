@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
-    QComboBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -16,6 +15,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..theme import TEXT_DIM, TEXT_LABEL
+from ..components.combo_box import NoScrollComboBox
 
 _LABEL_STYLE = (
     f"color: {TEXT_LABEL}; font-size: 10px; font-weight: bold; "
@@ -44,7 +44,7 @@ class ConfigSection(QWidget):
         lbl.setStyleSheet(_LABEL_STYLE)
         layout.addWidget(lbl)
 
-        self._preset_combo = QComboBox()
+        self._preset_combo = NoScrollComboBox()
         self._preset_combo.currentTextChanged.connect(self.preset_selected)
         layout.addWidget(self._preset_combo)
 

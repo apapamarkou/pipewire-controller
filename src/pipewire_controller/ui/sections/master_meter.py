@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QComboBox,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -19,6 +18,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from ..components.combo_box import NoScrollComboBox
 from ..components.meter_bar import MeterBar
 from ..theme import TEXT_DIM, TEXT_LABEL, TEXT_PRIMARY
 
@@ -45,6 +45,7 @@ class MasterMeterSection(QWidget):
     """Content widget for the Master Meter accordion section."""
 
     channel_source_changed = pyqtSignal(int, str)  # channel_idx, source_name
+    mode_changed = pyqtSignal(str)
 
     def __init__(
         self, available_outputs: list[str] | None = None, parent: QWidget | None = None
@@ -65,7 +66,7 @@ class MasterMeterSection(QWidget):
         mode_row = QHBoxLayout()
         mode_lbl = QLabel("Mode:")
         mode_lbl.setStyleSheet(_LABEL_STYLE)
-        self._mode_combo = QComboBox()
+        self._mode_combo = NoScrollComboBox()
         self._mode_combo.addItems(list(MASTER_MODES.keys()))
         self._mode_combo.setCurrentText("Stereo")
         self._mode_combo.currentTextChanged.connect(self._on_mode_changed)
@@ -151,7 +152,7 @@ class MasterMeterSection(QWidget):
             lbl.setStyleSheet(_DIM_STYLE)
             lbl.setFixedWidth(30)
 
-            combo = QComboBox()
+            combo = NoScrollComboBox()
             combo.addItem("— None —")
             for out in self._available_outputs:
                 combo.addItem(out)
@@ -163,9 +164,17 @@ class MasterMeterSection(QWidget):
             self._channel_combos.append(combo)
             self._channels_layout.addLayout(row)
 
+    def set_mode(self, mode: str) -> None:
+        self._mode_combo.blockSignals(True)
+        self._mode_combo.setCurrentText(mode)
+        self._mode_combo.blockSignals(False)
+        self._mode = mode
+        self._rebuild_channels()
+
     def _on_mode_changed(self, mode: str) -> None:
         self._mode = mode
         self._rebuild_channels()
+        self.mode_changed.emit(mode)
 
     def update_available_outputs(self, outputs: list[str]) -> None:
         self._available_outputs = outputs

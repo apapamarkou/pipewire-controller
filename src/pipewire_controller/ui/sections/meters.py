@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QComboBox,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -24,6 +23,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ...metering import ChannelMeter
+from ..components.combo_box import NoScrollComboBox
 from ..components.meter_bar import MeterBar
 from ..theme import C_ERROR, TEXT_DIM, TEXT_LABEL, TEXT_PRIMARY
 
@@ -85,15 +85,20 @@ class ChannelMeterWidget(QWidget):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._show_context_menu)
 
-    def _make_tooltip(self) -> str:
+    def _make_tooltip(self, snap: dict | None = None) -> str:
         m = self._meter
-        parts = [f"Channel: {m.name or '?'}"]
+        parts = []
         if m.node_name:
-            parts.append(f"Node: {m.node_name}")
-        if m.port_name:
-            parts.append(f"Port: {m.port_name}")
-        if m.channel_number:
+            parts.append(f"Device: {m.node_name}")
+        parts.append(f"Channel: {m.name or '?'}")
+        if m.channel_number is not None:
             parts.append(f"Ch#: {m.channel_number}")
+        if snap:
+            parts.append(f"Peak: {snap['peak_dbfs']:.1f} dBFS")
+            parts.append(f"RMS:  {snap['rms_dbfs']:.1f} dBFS")
+            parts.append(f"Hold: {snap['peak_hold_dbfs']:.1f} dBFS")
+            if snap["over"]:
+                parts.append("⚠ OVER")
         return "\n".join(parts)
 
     def update_from_snapshot(self, snap: dict) -> None:
@@ -102,12 +107,9 @@ class ChannelMeterWidget(QWidget):
         self._level_lbl.setText(f"{db:.1f}" if db > -120 else "—")
         self._over_lbl.setVisible(snap["over"])
         self._name_lbl.setText(snap["name"] or "—")
+        self.setToolTip(self._make_tooltip(snap))
 
     def mousePressEvent(self, event) -> None:
-        from PyQt6.QtWidgets import QToolTip
-
-        if event.button() == Qt.MouseButton.LeftButton:
-            QToolTip.showText(event.globalPosition().toPoint(), self._make_tooltip(), self)
         super().mousePressEvent(event)
 
     def _show_context_menu(self, pos) -> None:
@@ -136,6 +138,7 @@ class MeterSection(QWidget):
     """
 
     clear_requested = pyqtSignal()
+    mode_changed = pyqtSignal(str)
 
     def __init__(self, title: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -154,9 +157,10 @@ class MeterSection(QWidget):
         ctrl.addWidget(lbl)
         ctrl.addStretch()
 
-        self._mode_combo = QComboBox()
+        self._mode_combo = NoScrollComboBox()
         self._mode_combo.addItems(["Peak", "RMS"])
         self._mode_combo.setFixedWidth(60)
+        self._mode_combo.currentTextChanged.connect(self.mode_changed)
         ctrl.addWidget(self._mode_combo)
 
         clear_btn = QPushButton("CLEAR")
@@ -184,6 +188,11 @@ class MeterSection(QWidget):
         self._empty_lbl.setStyleSheet(_DIM_STYLE)
         layout.addWidget(self._empty_lbl)
         self._empty_lbl.setVisible(True)
+
+    def set_mode(self, mode: str) -> None:
+        self._mode_combo.blockSignals(True)
+        self._mode_combo.setCurrentText(mode)
+        self._mode_combo.blockSignals(False)
 
     def set_channels(self, meters: list[ChannelMeter]) -> None:
         """Rebuild channel widgets. One ChannelMeter = one bar (one per node)."""

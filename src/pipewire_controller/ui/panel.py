@@ -111,6 +111,7 @@ class ControlPanel(QWidget):
         # Skip taskbar / pager — panel should not appear as an app window
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         self.setWindowFlag(Qt.WindowType.WindowDoesNotAcceptFocus, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_AlwaysShowToolTips, True)
 
         self._build_ui()
         self._restore_geometry()
@@ -199,7 +200,7 @@ class ControlPanel(QWidget):
         if not wid:
             return
         try:
-            subprocess.Popen(
+            subprocess.run(
                 [
                     "xprop",
                     "-id", str(int(wid)),
@@ -212,6 +213,10 @@ class ControlPanel(QWidget):
             )
         except FileNotFoundError:
             pass  # xprop not available
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._set_skip_taskbar()
 
     def save_geometry(self) -> None:
         self._config.setdefault("window", {})["width"] = self.width()

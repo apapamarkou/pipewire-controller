@@ -15,7 +15,6 @@ from __future__ import annotations
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
     QButtonGroup,
-    QComboBox,
     QHBoxLayout,
     QLabel,
     QRadioButton,
@@ -25,6 +24,7 @@ from PyQt6.QtWidgets import (
 
 from ...log import get_logger
 from ...pipewire.model import GraphSettings
+from ..components.combo_box import NoScrollComboBox
 from ..theme import C_OK, TEXT_DIM, TEXT_LABEL, TEXT_PRIMARY, TEXT_SECONDARY
 
 log = get_logger("ui.samplerate")
@@ -67,7 +67,7 @@ class SampleRateSection(QWidget):
         rate_col = QVBoxLayout()
         rate_col.setSpacing(4)
         rate_col.addWidget(self._make_label("SAMPLE RATE"))
-        self._rate_combo = QComboBox()
+        self._rate_combo = NoScrollComboBox()
         self._rate_combo.setMinimumWidth(100)
         self._populate_rates(_FALLBACK_RATES)
         rate_col.addWidget(self._rate_combo)
@@ -95,7 +95,7 @@ class SampleRateSection(QWidget):
         q_col = QVBoxLayout()
         q_col.setSpacing(4)
         q_col.addWidget(self._make_label("BUFFER / QUANTUM"))
-        self._quantum_combo = QComboBox()
+        self._quantum_combo = NoScrollComboBox()
         self._quantum_combo.setMinimumWidth(100)
         for q in _QUANTUM_VALUES:
             self._quantum_combo.addItem(str(q), q)

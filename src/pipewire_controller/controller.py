@@ -105,6 +105,7 @@ class AppController:
 
     def _apply_auto_load(self) -> None:
         """Apply active preset force settings on startup if auto_load is enabled."""
+        self._restore_meter_modes()
         if not self._config.get("window", {}).get("auto_load", False):
             return
         preset = active_preset(self._config)
@@ -120,6 +121,12 @@ class AppController:
             pw_client.set_force_quantum(quantum)
         else:
             pw_client.clear_force_quantum()
+
+    def _restore_meter_modes(self) -> None:
+        w = self._config.get("window", {})
+        self._input_meter_section.set_mode(w.get("input_meter_mode", "Peak"))
+        self._output_meter_section.set_mode(w.get("output_meter_mode", "Peak"))
+        self._master_meter_section.set_mode(w.get("master_mode", "Stereo"))
 
     def _build_sections(self) -> None:
         # Devices / I/O
@@ -179,6 +186,16 @@ class AppController:
         cs.save_requested.connect(self._on_save_config)
         cs.manage_requested.connect(self._on_manage_config)
         cs.preset_selected.connect(self._on_preset_selected)
+
+        self._input_meter_section.mode_changed.connect(
+            lambda m: self._config.setdefault("window", {}).__setitem__("input_meter_mode", m)
+        )
+        self._output_meter_section.mode_changed.connect(
+            lambda m: self._config.setdefault("window", {}).__setitem__("output_meter_mode", m)
+        )
+        self._master_meter_section.mode_changed.connect(
+            lambda m: self._config.setdefault("window", {}).__setitem__("master_mode", m)
+        )
 
     def _refresh_graph(self) -> None:
         graph = pw_client.get_graph()
@@ -565,4 +582,5 @@ class AppController:
             self._user_force_quantum = None
             pw_client.clear_force_quantum()
         self._refresh_graph()
+        self._restore_meter_modes()
         log.info("Loaded configuration: %s", name)
