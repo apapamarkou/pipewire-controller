@@ -1,0 +1,5 @@
+pipewire-controller (2.0.0) unstable; urgency=medium
+
+  * Initial Debian package release.
+
+ -- Andrianos Papamarkou <andrianos@example.com>  Wed, 01 Jan 2025 00:00:00 +0000

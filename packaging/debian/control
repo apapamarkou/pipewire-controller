@@ -1,0 +1,18 @@
+Source: pipewire-controller
+Section: sound
+Priority: optional
+Maintainer: Andrianos Papamarkou <andrianos@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/apapamarkou/pipewire-controller
+Rules-Requires-Root: no
+
+Package: pipewire-controller
+Architecture: all
+Depends: ${misc:Depends}, python3 (>= 3.10), python3-pyqt6 (>= 6.4), python3-numpy, pipewire, wireplumber
+Description: PipeWire Audio Control Center — DAW Companion for Linux
+ A professional Linux desktop application for controlling and monitoring
+ PipeWire, designed for DAW and audio-production workflows. Features
+ include device management, sample rate and quantum control, real-time
+ level metering, LUFS metering, latency measurement, and named
+ configuration presets.

@@ -1,4 +1,4 @@
-.PHONY: run test lint lint-fix clean install uninstall package package-test help
+.PHONY: run test lint lint-fix clean install uninstall packages package test-packages test-package help
 
 APP_NAME  := pipewire-controller
 SRC_DIR   := src/pipewire_controller
@@ -9,15 +9,17 @@ help:
 	@echo "PipeWire Audio Control Center — Development Commands"
 	@echo "====================================================="
 	@echo ""
-	@echo "  make run          - Run the application"
-	@echo "  make test         - Run test suite"
-	@echo "  make lint         - Check code style"
-	@echo "  make lint-fix     - Auto-fix code style"
-	@echo "  make install      - Install for development"
-	@echo "  make uninstall    - Uninstall"
-	@echo "  make package      - Build tar.gz package"
-	@echo "  make package-test - Test the built package"
-	@echo "  make clean        - Remove build artifacts"
+	@echo "  make run           - Run the application"
+	@echo "  make test          - Run test suite"
+	@echo "  make lint          - Check code style"
+	@echo "  make lint-fix      - Auto-fix code style"
+	@echo "  make install       - Install for development"
+	@echo "  make uninstall     - Uninstall"
+	@echo "  make packages      - Build all packages"
+	@echo "  make package       - Interactively build a package"
+	@echo "  make test-packages - Test all built packages"
+	@echo "  make test-package  - Interactively test a package"
+	@echo "  make clean         - Remove build artifacts"
 	@echo ""
 
 run:
@@ -45,8 +47,14 @@ clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
-package:
-	bash packaging/scripts/build-tarball.sh
+packages:
+	bash packaging/scripts/packages.sh
 
-package-test:
-	bash packaging/scripts/test-tarball.sh
+package:
+	bash packaging/scripts/packages.sh --interactive
+
+test-packages:
+	bash packaging/scripts/test-packages.sh
+
+test-package:
+	bash packaging/scripts/test-packages.sh --interactive

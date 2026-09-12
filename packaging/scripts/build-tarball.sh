@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Build a binary tarball: pipewire-controller-VERSION-linux.tar.gz
-# Adapted from LinxPad's build-tarball.sh
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

@@ -1,0 +1,28 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	# Wheel is pre-built and mounted at /wheels by the build script
+
+override_dh_auto_test:
+	# Tests run separately in CI — skip during packaging
+
+override_dh_auto_install:
+	pip3 install --no-deps --break-system-packages \
+		--root=debian/pipewire-controller --prefix=/usr \
+		/wheels/pipewire_controller-*.whl
+	# Move any misplaced local/ files to the correct usr/ location
+	if [ -d debian/pipewire-controller/usr/local ]; then \
+		cp -a debian/pipewire-controller/usr/local/. debian/pipewire-controller/usr/ && \
+		rm -rf debian/pipewire-controller/usr/local; \
+	fi
+	install -Dm644 packaging/specs/pipewire-controller.desktop \
+		debian/pipewire-controller/usr/share/applications/pipewire-controller.desktop
+	install -Dm644 resources/icons/pipewire-controller.py.png \
+		debian/pipewire-controller/usr/share/icons/hicolor/256x256/apps/pipewire-controller.png
+
+override_dh_usrlocal:
