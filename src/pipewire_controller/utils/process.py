@@ -16,10 +16,10 @@ class ProcessManager:
         """Terminate existing instance and register current process."""
         if self.pid_file.exists():
             try:
-                with open(self.pid_file, "r") as f:
+                with open(self.pid_file) as f:
                     existing_pid = int(f.read().strip())
                 os.kill(existing_pid, signal.SIGTERM)
-            except (ProcessLookupError, ValueError, IOError):
+            except (OSError, ProcessLookupError, ValueError):
                 pass
 
         with open(self.pid_file, "w") as f:
@@ -30,5 +30,5 @@ class ProcessManager:
         if self.pid_file.exists():
             try:
                 self.pid_file.unlink()
-            except IOError:
+            except OSError:
                 pass

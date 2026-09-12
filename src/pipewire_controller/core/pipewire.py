@@ -1,7 +1,6 @@
 """PipeWire interface for controlling sample rate and buffer size."""
 
 import subprocess
-from typing import Optional
 
 
 class PipeWireController:
@@ -11,10 +10,10 @@ class PipeWireController:
     def set_sample_rate(rate: int) -> bool:
         """
         Set PipeWire sample rate.
-        
+
         Args:
             rate: Sample rate in Hz
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -23,7 +22,7 @@ class PipeWireController:
                 ["pw-metadata", "-n", "settings", "0", "clock.force-rate", str(rate)],
                 check=True,
                 capture_output=True,
-                timeout=5
+                timeout=5,
             )
             return True
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
@@ -33,10 +32,10 @@ class PipeWireController:
     def set_buffer_size(size: int) -> bool:
         """
         Set PipeWire buffer size (quantum).
-        
+
         Args:
             size: Buffer size in samples
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -45,14 +44,14 @@ class PipeWireController:
                 ["pw-metadata", "-n", "settings", "0", "clock.force-quantum", str(size)],
                 check=True,
                 capture_output=True,
-                timeout=5
+                timeout=5,
             )
             return True
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             return False
 
     @staticmethod
-    def get_current_rate() -> Optional[int]:
+    def get_current_rate() -> int | None:
         """Get current sample rate from PipeWire."""
         try:
             result = subprocess.run(
@@ -60,7 +59,7 @@ class PipeWireController:
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=5
+                timeout=5,
             )
             for line in result.stdout.split("\n"):
                 if "clock.force-rate" in line:
@@ -72,7 +71,7 @@ class PipeWireController:
             return None
 
     @staticmethod
-    def get_current_quantum() -> Optional[int]:
+    def get_current_quantum() -> int | None:
         """Get current buffer size from PipeWire."""
         try:
             result = subprocess.run(
@@ -80,7 +79,7 @@ class PipeWireController:
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=5
+                timeout=5,
             )
             for line in result.stdout.split("\n"):
                 if "clock.force-quantum" in line:

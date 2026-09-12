@@ -1,46 +1,52 @@
-.PHONY: help install install-dev test test-cov format lint clean run build
+.PHONY: run test lint lint-fix clean install uninstall package package-test help
+
+APP_NAME  := pipewire-controller
+SRC_DIR   := src/pipewire_controller
+ICONS_DIR := $(HOME)/.local/share/icons/hicolor/256x256/apps
+APPS_DIR  := $(HOME)/.local/share/applications
 
 help:
-	@echo "PipeWire Controller - Development Commands"
-	@echo "==========================================="
+	@echo "PipeWire Audio Control Center — Development Commands"
+	@echo "====================================================="
 	@echo ""
-	@echo "  make install      - Install package"
-	@echo "  make install-dev  - Install with dev dependencies"
-	@echo "  make test         - Run tests"
-	@echo "  make test-cov     - Run tests with coverage"
-	@echo "  make format       - Format code with black"
-	@echo "  make lint         - Lint code with ruff"
+	@echo "  make run          - Run the application"
+	@echo "  make test         - Run test suite"
+	@echo "  make lint         - Check code style"
+	@echo "  make lint-fix     - Auto-fix code style"
+	@echo "  make install      - Install for development"
+	@echo "  make uninstall    - Uninstall"
+	@echo "  make package      - Build tar.gz package"
+	@echo "  make package-test - Test the built package"
 	@echo "  make clean        - Remove build artifacts"
-	@echo "  make run          - Run application"
-	@echo "  make build        - Build distribution packages"
 	@echo ""
 
-install:
-	pip install .
-
-install-dev:
-	pip install -e ".[dev]"
+run:
+	PYTHONPATH=src python3 -m pipewire_controller
 
 test:
-	PYTHONPATH=src pytest -v
-
-test-cov:
-	PYTHONPATH=src pytest --cov=src/pipewire_controller --cov-report=term-missing --cov-report=html
-
-format:
-	black src/ tests/
+	PYTHONPATH=src python3 -m pytest tests/ -v
 
 lint:
 	ruff check src/ tests/
+	black --check src/ tests/
+
+lint-fix:
+	ruff check --fix src/ tests/
+	black src/ tests/
+
+install:
+	pip3 install -e ".[dev]"
+
+uninstall:
+	bash uninstall
 
 clean:
-	rm -rf build/ dist/ *.egg-info
-	rm -rf .pytest_cache .coverage htmlcov/
-	find . -type d -name __pycache__ -exec rm -rf {} +
-	find . -type f -name "*.pyc" -delete
+	rm -rf build/ dist/ *.egg-info packaging/output/
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
-run:
-	PYTHONPATH=src python -m pipewire_controller
+package:
+	bash packaging/scripts/build-tarball.sh
 
-build:
-	python -m build
+package-test:
+	bash packaging/scripts/test-tarball.sh

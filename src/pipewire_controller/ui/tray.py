@@ -1,174 +1,140 @@
-"""System tray application UI."""
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2024 Andrianos Papamarkou
+"""System tray application."""
+
+from __future__ import annotations
 
 import sys
 from pathlib import Path
-from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
-from PyQt6.QtGui import QIcon, QAction
+
 from PyQt6.QtCore import QTimer
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
-from ..core.pipewire import PipeWireController
-from ..core.hardware import HardwareDetector
-from ..engine import PipewireEngine
-from ..utils.config import Config
-from ..utils.process import ProcessManager
-from .dialogs import AboutDialog
+from .. import __version__
+from ..config import load as load_config
+from ..config import save as save_config
+from ..log import get_logger, setup_logging
+from ..shortcuts import ShortcutManager
+from .dialogs import AboutDialog, SystemInfoDialog
+from .panel import ControlPanel
+
+log = get_logger("tray")
+
+_ICON_PATHS = [
+    Path.home() / ".local/share/icons/pipewire-controller.png",
+    Path(__file__).parent.parent.parent.parent / "resources/icons/pipewire-controller.py.png",
+    Path(__file__).parent.parent / "resources/icons/pipewire-controller.py.png",
+]
 
 
-class TrayApplication(QApplication):
-    """Main system tray application."""
+def _find_icon() -> QIcon:
+    for p in _ICON_PATHS:
+        if p.exists():
+            return QIcon(str(p))
+    return QIcon.fromTheme("audio-card", QIcon.fromTheme("multimedia-volume-control"))
 
-    BUFFER_SIZES = [32, 64, 128, 256, 512, 1024, 2048]
 
-    def __init__(self, argv):
+class TrayApp(QApplication):
+    """Main application — lives in the system tray."""
+
+    def __init__(self, argv: list[str]) -> None:
         super().__init__(argv)
-        
-        self.config = Config()
-        self.settings = self.config.load()
-        
-        # Use engine for all PipeWire operations
-        self.engine = PipewireEngine()
-        
-        # Get hardware-supported sample rates
-        self.supported_rates = self.engine.get_supported_sample_rates()
-        
-        # Apply saved settings
-        self._apply_settings()
-        
-        # Setup tray icon
-        self.tray_icon = QSystemTrayIcon()
-        self._setup_icon()
-        self.tray_icon.setContextMenu(self._create_menu())
-        self.tray_icon.activated.connect(self._on_tray_activated)
-        self.tray_icon.show()
-        
-        self.about_dialog = None
-        
-        # Keep event loop alive
-        self.timer = QTimer()
-        self.timer.timeout.connect(lambda: None)
-        self.timer.start(1000)
+        self.setApplicationName("PipeWire Audio Control Center")
+        self.setApplicationVersion(__version__)
+        self.setQuitOnLastWindowClosed(False)
 
-    def _setup_icon(self):
-        """Setup tray icon with fallback."""
-        icon_paths = [
-            Path.home() / ".local/share/icons/pipewire-controller.png",
-            Path(__file__).parent.parent / "resources/icons/pipewire-controller.png"
-        ]
-        
-        for path in icon_paths:
-            if path.exists():
-                self.tray_icon.setIcon(QIcon(str(path)))
-                break
-        else:
-            self.tray_icon.setIcon(QIcon.fromTheme("audio-card"))
-        
-        self._update_tooltip()
+        self._config = load_config()
+        self._panel: ControlPanel | None = None
+        self._about_dialog: AboutDialog | None = None
+        self._shortcuts: ShortcutManager | None = None
 
-    def _create_menu(self):
-        """Create context menu with hardware-filtered rates."""
+        self._icon = _find_icon()
+        self._tray = QSystemTrayIcon(self._icon, self)
+        self._tray.setToolTip(f"PipeWire Audio Control Center {__version__}")
+        self._tray.setContextMenu(self._build_tray_menu())
+        self._tray.activated.connect(self._on_tray_activated)
+        self._tray.show()
+
+        # Build panel after event loop starts so geometry is correct
+        QTimer.singleShot(0, self._init_panel)
+
+        self.aboutToQuit.connect(self._on_quit)
+
+    def _build_tray_menu(self) -> QMenu:
         menu = QMenu()
-        
-        # Sample rate submenu
-        rate_menu = QMenu("Sample Rate", menu)
-        for rate in self.supported_rates:
-            action = QAction(f"{rate} Hz", rate_menu, checkable=True)
-            action.setChecked(rate == self.settings["samplerate"])
-            action.triggered.connect(lambda checked, r=rate: self._change_sample_rate(r))
-            rate_menu.addAction(action)
-        menu.addMenu(rate_menu)
-        
-        # Buffer size submenu
-        buffer_menu = QMenu("Buffer Size", menu)
-        for size in self.BUFFER_SIZES:
-            action = QAction(f"{size}", buffer_menu, checkable=True)
-            action.setChecked(size == self.settings["buffer_size"])
-            action.triggered.connect(lambda checked, s=size: self._change_buffer_size(s))
-            buffer_menu.addAction(action)
-        menu.addMenu(buffer_menu)
-        
+        menu.setStyleSheet(
+            "QMenu { background: #1a1a1a; color: #e0e0e0; border: 1px solid #2d2d2d; }"
+            "QMenu::item:selected { background: #2e2e2e; }"
+        )
+
+        show_action = menu.addAction("Show / Hide Panel")
+        show_action.triggered.connect(self._toggle_panel)
+
         menu.addSeparator()
-        
-        # About
-        about_action = QAction("About", menu)
+
+        status_action = menu.addAction("System Status…")
+        status_action.triggered.connect(self._show_system_status)
+
+        menu.addSeparator()
+
+        about_action = menu.addAction(f"About  (v{__version__})")
         about_action.triggered.connect(self._show_about)
-        menu.addAction(about_action)
-        
-        # Quit
-        quit_action = QAction("Quit", menu)
+
+        menu.addSeparator()
+
+        quit_action = menu.addAction("Quit")
         quit_action.triggered.connect(self.quit)
-        menu.addAction(quit_action)
-        
+
         return menu
 
-    def _change_sample_rate(self, rate: int):
-        """Change sample rate and update UI."""
-        if self.engine.set_sample_rate(rate):
-            self.settings["samplerate"] = rate
-            self.config.save(self.settings)
-            self._update_menu()
-            self._update_tooltip()
+    def _init_panel(self) -> None:
+        self._panel = ControlPanel(self._config)
+        self._shortcuts = ShortcutManager(self._panel)
+        self._shortcuts.setup_defaults(self._toggle_panel)
 
-    def _change_buffer_size(self, size: int):
-        """Change buffer size and update UI."""
-        if self.engine.set_buffer_size(size):
-            self.settings["buffer_size"] = size
-            self.config.save(self.settings)
-            self._update_menu()
-            self._update_tooltip()
+        # Show panel on startup
+        self._panel.show()
+        self._panel.raise_()
 
-    def _update_menu(self):
-        """Update menu checkmarks."""
-        menu = self.tray_icon.contextMenu()
-        for action in menu.actions():
-            submenu = action.menu()
-            if submenu:
-                for sub_action in submenu.actions():
-                    if action.text() == "Sample Rate":
-                        sub_action.setChecked(
-                            sub_action.text() == f"{self.settings['samplerate']} Hz"
-                        )
-                    elif action.text() == "Buffer Size":
-                        sub_action.setChecked(
-                            sub_action.text() == str(self.settings["buffer_size"])
-                        )
+    def _toggle_panel(self) -> None:
+        if self._panel is None:
+            return
+        self._panel.toggle_visible()
 
-    def _update_tooltip(self):
-        """Update tooltip with current settings."""
-        tooltip = (
-            f"PipeWire Controller\n"
-            f"{self.settings['samplerate']} Hz @ {self.settings['buffer_size']} samples"
-        )
-        self.tray_icon.setToolTip(tooltip)
+    def _show_about(self) -> None:
+        if self._about_dialog is None:
+            self._about_dialog = AboutDialog()
+        self._about_dialog.show()
+        self._about_dialog.raise_()
+        self._about_dialog.activateWindow()
 
-    def _apply_settings(self):
-        """Apply saved settings to PipeWire."""
-        self.engine.set_sample_rate(self.settings["samplerate"])
-        self.engine.set_buffer_size(self.settings["buffer_size"])
+    def _show_system_status(self) -> None:
+        dlg = SystemInfoDialog()
+        dlg.exec()
 
-    def _on_tray_activated(self, reason):
-        """Handle tray icon activation."""
+    def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
-            self._show_about()
+            self._toggle_panel()
 
-    def _show_about(self):
-        """Show or toggle about dialog."""
-        if self.about_dialog is None:
-            self.about_dialog = AboutDialog()
-        
-        if self.about_dialog.isVisible():
-            self.about_dialog.hide()
-        else:
-            self.about_dialog.show()
-            self.about_dialog.raise_()
-            self.about_dialog.activateWindow()
+    def _on_quit(self) -> None:
+        if self._panel is not None:
+            self._panel.save_geometry()
+        save_config(self._config)
+        log.info("Application quit, config saved")
 
 
-def run():
-    """Entry point for the application."""
-    process_mgr = ProcessManager()
-    process_mgr.ensure_single_instance()
-    
-    app = TrayApplication(sys.argv)
-    app.aboutToQuit.connect(process_mgr.cleanup)
-    
-    sys.exit(app.exec())
+def run(argv: list[str] | None = None) -> int:
+    """Entry point."""
+    setup_logging()
+    if argv is None:
+        argv = sys.argv
+
+    # Handle --toggle CLI flag for external shortcut integration
+    if "--toggle" in argv:
+        # Send signal to running instance via config-based IPC (future phase)
+        # For now, just start normally
+        argv = [a for a in argv if a != "--toggle"]
+
+    app = TrayApp(argv)
+    return app.exec()

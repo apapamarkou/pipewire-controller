@@ -2,7 +2,6 @@
 
 import json
 import subprocess
-from typing import List, Optional, Dict, Any
 
 
 class PipewireEngine:
@@ -19,7 +18,7 @@ class PipewireEngine:
                 ["pw-metadata", "-n", "settings", "0", "clock.force-rate", str(rate)],
                 check=True,
                 capture_output=True,
-                timeout=self.timeout
+                timeout=self.timeout,
             )
             return True
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
@@ -32,51 +31,47 @@ class PipewireEngine:
                 ["pw-metadata", "-n", "settings", "0", "clock.force-quantum", str(size)],
                 check=True,
                 capture_output=True,
-                timeout=self.timeout
+                timeout=self.timeout,
             )
             return True
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             return False
 
-    def get_supported_sample_rates(self) -> List[int]:
+    def get_supported_sample_rates(self) -> list[int]:
         """Query PipeWire for supported sample rates from connected devices."""
         try:
             result = subprocess.run(
-                ["pw-dump"],
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=self.timeout
+                ["pw-dump"], capture_output=True, text=True, check=True, timeout=self.timeout
             )
             devices = json.loads(result.stdout)
             rates = self._extract_rates_from_devices(devices)
-            
+
             if not rates:
                 return self._get_fallback_rates()
-            
+
             return sorted(rates)
-            
+
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, json.JSONDecodeError):
             return self._get_fallback_rates()
 
-    def _extract_rates_from_devices(self, devices: List[dict]) -> set:
+    def _extract_rates_from_devices(self, devices: list[dict]) -> set:
         """Extract supported sample rates from pw-dump output."""
         rates = set()
-        
+
         for device in devices:
             if device.get("type") != "PipeWire:Interface:Node":
                 continue
-            
+
             info = device.get("info", {})
             props = info.get("props", {})
-            
+
             media_class = props.get("media.class", "")
             if "Audio/Sink" not in media_class and "Audio/Source" not in media_class:
                 continue
-            
+
             params = info.get("params", {})
             enum_format = params.get("EnumFormat", [])
-            
+
             for fmt in enum_format:
                 if isinstance(fmt, dict):
                     rate = fmt.get("rate")
@@ -89,14 +84,14 @@ class PipewireEngine:
                             if min_rate and max_rate:
                                 common = [44100, 48000, 88200, 96000, 176400, 192000]
                                 rates.update(r for r in common if min_rate <= r <= max_rate)
-        
+
         return rates
 
-    def _get_fallback_rates(self) -> List[int]:
+    def _get_fallback_rates(self) -> list[int]:
         """Return common fallback rates."""
         return [44100, 48000, 88200, 96000, 176400, 192000]
 
-    def get_current_rate(self) -> Optional[int]:
+    def get_current_rate(self) -> int | None:
         """Get current sample rate from PipeWire."""
         try:
             result = subprocess.run(
@@ -104,7 +99,7 @@ class PipewireEngine:
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=self.timeout
+                timeout=self.timeout,
             )
             for line in result.stdout.split("\n"):
                 if "clock.force-rate" in line:
@@ -115,7 +110,7 @@ class PipewireEngine:
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError):
             return None
 
-    def get_current_quantum(self) -> Optional[int]:
+    def get_current_quantum(self) -> int | None:
         """Get current buffer size from PipeWire."""
         try:
             result = subprocess.run(
@@ -123,7 +118,7 @@ class PipewireEngine:
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=self.timeout
+                timeout=self.timeout,
             )
             for line in result.stdout.split("\n"):
                 if "clock.force-quantum" in line:
@@ -134,7 +129,7 @@ class PipewireEngine:
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, ValueError):
             return None
 
-    def get_device_info(self) -> Optional[str]:
+    def get_device_info(self) -> str | None:
         """Get information about the current default audio device."""
         try:
             result = subprocess.run(
@@ -142,7 +137,7 @@ class PipewireEngine:
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=self.timeout
+                timeout=self.timeout,
             )
             for line in result.stdout.split("\n"):
                 if "* " in line and ("Sink" in line or "Audio/Sink" in line):
