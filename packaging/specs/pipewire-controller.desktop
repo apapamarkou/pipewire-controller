@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=PipeWire Audio Control Center
+Comment=DAW Companion — PipeWire audio control and monitoring
+Exec=pipewire-controller
+Icon=pipewire-controller
+Categories=AudioVideo;Audio;
+Terminal=false
+StartupNotify=false
+StartupWMClass=PipeWireController
+Keywords=pipewire;audio;daw;jack;latency;meter;

@@ -1,77 +1,229 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# PipeWire Audio Control Center installer
+# Works from git clone or binary tarball.
+# Usage: ./install [--non-interactive]
+set -euo pipefail
 
-# Detect distribution and install system dependencies
-echo "🔍 Detecting Linux distribution..."
+NON_INTERACTIVE=0
+[[ "${1:-}" == "--non-interactive" ]] && NON_INTERACTIVE=1
 
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    DISTRO=$ID
+# ── Helpers ───────────────────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'
+BOLD='\033[1m'; NC='\033[0m'
+
+info()  { echo -e "${CYAN}→${NC} $*"; }
+ok()    { echo -e "${GREEN}✓${NC} $*"; }
+warn()  { echo -e "${YELLOW}⚠${NC} $*"; }
+die()   { echo -e "${RED}✗${NC} $*" >&2; exit 1; }
+
+ask() {
+    [[ $NON_INTERACTIVE -eq 1 ]] && return 0
+    local ans
+    read -r -p "$1 [Y/n] " ans
+    [[ -z "$ans" || "$ans" =~ ^[Yy] ]]
+}
+
+# ── Welcome ───────────────────────────────────────────────────────────────────
+printf '\033c'
+echo -e "${BOLD}${CYAN}"
+echo "  PipeWire Audio Control Center"
+echo "  DAW Companion for Linux"
+echo -e "${NC}"
+echo -e "  Thank you for installing PipeWire Audio Control Center!\n"
+
+# ── Locate source root ────────────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if ls "$SCRIPT_DIR/wheels"/pipewire_controller-*.whl &>/dev/null 2>&1; then
+    MODE=tarball
+    WHEEL="$(ls "$SCRIPT_DIR/wheels"/pipewire_controller-*.whl | head -1)"
 else
-    echo "⚠️  Cannot detect distribution. Please install dependencies manually."
-    DISTRO="unknown"
+    MODE=source
+    WHEEL=""
 fi
 
-echo "📦 Installing system dependencies for $DISTRO..."
+# ── Dependency check ──────────────────────────────────────────────────────────
+MISSING_PYTHON=0
+MISSING_PIP=0
+MISSING_PYQT6=0
+MISSING_NUMPY=0
+MISSING_PIPEWIRE=0
 
-case $DISTRO in
-    arch|manjaro|garuda)
-        sudo pacman -S --needed python-pipx python-pyqt6 pipewire wireplumber xcb-util-cursor
-        ;;
-    debian|ubuntu|mint|pop)
-        sudo apt update
-        sudo apt install -y python3-pipx python3-pyqt6 pipewire pipewire-bin wireplumber
-        ;;
-    fedora|rhel|centos)
-        sudo dnf install -y pipx python3-pyqt6 pipewire pipewire-utils
-        ;;
-    opensuse*|suse)
-        sudo zypper install -y python3-pipx python3-qt6 pipewire pipewire-tools
-        ;;
-    *)
-        echo "⚠️  Unknown distribution: $DISTRO"
-        echo "Please install manually: pipx, PyQt6, PipeWire"
-        ;;
-esac
+python3 --version &>/dev/null || MISSING_PYTHON=1
+python3 -m pip --version &>/dev/null 2>&1 || MISSING_PIP=1
 
-# 2. Install the app via pipx
-echo "🚀 Installing pipewire-controller via pipx..."
-pipx install pipewire-controller --force
-
-# 3. Ensure pipx binaries are in PATH
-pipx ensurepath
-
-# 4. Create the .desktop file
-APP_PATH=$(which pipewire-controller || echo "$HOME/.local/bin/pipewire-controller")
-ICON_PATH="$HOME/.local/share/pipx/venvs/pipewire-controller/lib/python3.12/site-packages/pipewire_controller/resources/icons/icon.png"
-
-echo "🖥️  Creating Desktop Entry..."
-mkdir -p ~/.local/share/applications
-
-cat <<EOF > ~/.local/share/applications/pipewire-controller.desktop
-[Desktop Entry]
-Name=Pipewire Controller
-Exec=$APP_PATH
-Icon=audio-card
-Terminal=false
-Type=Application
-Categories=AudioVideo;Audio;
-Comment=Control PipeWire sample rates and buffer size.
-EOF
-
-# Copy desktop file to autostart
-echo "🖥️  Creating Autostart Entry..."
-mkdir -p ~/.config/autostart
-cp ~/.local/share/applications/pipewire-controller.desktop ~/.config/autostart/pipewire-controller.desktop
-
-
-# Autostart and exit
-if [ -f "$APP_PATH" ]; then
-    nohup "$APP_PATH" > /dev/null 2>&1 &
-    echo "✅ Installation complete!"
-    echo "💡 You can now find 'Pipewire Controller' in your Application Menu."
-else
-    echo "❌ Error: could not auto start."
-    echo "✅ Installation complete!"
-    echo "💡 You can now find 'Pipewire Controller' in your Application Menu."
+if [[ $MISSING_PYTHON -eq 0 ]]; then
+    python3 -c "import PyQt6" &>/dev/null 2>&1 || MISSING_PYQT6=1
+    python3 -c "import numpy" &>/dev/null 2>&1 || MISSING_NUMPY=1
 fi
 
+command -v pw-metadata &>/dev/null || MISSING_PIPEWIRE=1
+
+MISSING_DEPS=$((MISSING_PYTHON + MISSING_PIP + MISSING_PYQT6 + MISSING_NUMPY + MISSING_PIPEWIRE))
+
+if [[ $MISSING_DEPS -gt 0 ]]; then
+    MISSING_LIST=()
+    [[ $MISSING_PYTHON   -eq 1 ]] && MISSING_LIST+=("python3 >= 3.10")
+    [[ $MISSING_PIP      -eq 1 ]] && MISSING_LIST+=("python3-pip")
+    [[ $MISSING_PYQT6    -eq 1 ]] && MISSING_LIST+=("python3-pyqt6 (PyQt6 >= 6.4)")
+    [[ $MISSING_NUMPY    -eq 1 ]] && MISSING_LIST+=("python3-numpy (numpy >= 1.24)")
+    [[ $MISSING_PIPEWIRE -eq 1 ]] && MISSING_LIST+=("pipewire (pw-metadata)")
+    warn "Missing: ${MISSING_LIST[*]}"
+    echo ""
+fi
+
+# ── Distro detection ──────────────────────────────────────────────────────────
+detect_distro() {
+    if [[ -f /etc/os-release ]]; then
+        # shellcheck source=/dev/null
+        source /etc/os-release
+        echo "${ID:-unknown}"
+    else
+        echo "unknown"
+    fi
+}
+
+# Privilege escalation: prefer sudo, fall back to su
+_elevate() {
+    if command -v sudo &>/dev/null; then
+        sudo "$@"
+    elif command -v su &>/dev/null; then
+        su -c "$*"
+    else
+        die "Cannot escalate privileges. Please install dependencies manually."
+    fi
+}
+
+install_deps_fedora() {
+    local pkgs=()
+    [[ $MISSING_PYTHON   -eq 1 ]] && pkgs+=(python3)
+    [[ $MISSING_PIP      -eq 1 ]] && pkgs+=(python3-pip)
+    [[ $MISSING_PYQT6    -eq 1 ]] && pkgs+=(python3-pyqt6)
+    [[ $MISSING_NUMPY    -eq 1 ]] && pkgs+=(python3-numpy)
+    [[ $MISSING_PIPEWIRE -eq 1 ]] && pkgs+=(pipewire pipewire-utils wireplumber)
+    info "Installing dependencies for Fedora/RHEL..."
+    _elevate dnf install -y "${pkgs[@]}"
+}
+
+install_deps_opensuse() {
+    local pkgs=()
+    [[ $MISSING_PYTHON   -eq 1 ]] && pkgs+=(python3)
+    [[ $MISSING_PIP      -eq 1 ]] && pkgs+=(python3-pip)
+    [[ $MISSING_PYQT6    -eq 1 ]] && pkgs+=(python3-qt6)
+    [[ $MISSING_NUMPY    -eq 1 ]] && pkgs+=(python3-numpy)
+    [[ $MISSING_PIPEWIRE -eq 1 ]] && pkgs+=(pipewire pipewire-tools wireplumber)
+    info "Installing dependencies for openSUSE..."
+    _elevate zypper install -y "${pkgs[@]}"
+}
+
+install_deps_debian() {
+    local pkgs=()
+    [[ $MISSING_PYTHON   -eq 1 ]] && pkgs+=(python3)
+    [[ $MISSING_PIP      -eq 1 ]] && pkgs+=(python3-pip)
+    [[ $MISSING_PYQT6    -eq 1 ]] && pkgs+=(python3-pyqt6)
+    [[ $MISSING_NUMPY    -eq 1 ]] && pkgs+=(python3-numpy)
+    [[ $MISSING_PIPEWIRE -eq 1 ]] && pkgs+=(pipewire pipewire-bin wireplumber)
+    info "Installing dependencies for Debian/Ubuntu..."
+    _elevate apt-get install -y "${pkgs[@]}"
+}
+
+install_deps_arch() {
+    local pkgs=()
+    [[ $MISSING_PYTHON   -eq 1 ]] && pkgs+=(python)
+    [[ $MISSING_PIP      -eq 1 ]] && pkgs+=(python-pip)
+    [[ $MISSING_PYQT6    -eq 1 ]] && pkgs+=(python-pyqt6)
+    [[ $MISSING_NUMPY    -eq 1 ]] && pkgs+=(python-numpy)
+    [[ $MISSING_PIPEWIRE -eq 1 ]] && pkgs+=(pipewire wireplumber)
+    info "Installing dependencies for Arch..."
+    _elevate pacman -S --noconfirm "${pkgs[@]}"
+}
+
+if [[ $MISSING_DEPS -gt 0 ]]; then
+    DISTRO="$(detect_distro)"
+    SUPPORTED=1
+
+    case "$DISTRO" in
+        fedora|rhel|centos|almalinux|rocky)
+            ask "Install missing dependencies with dnf?" || die "Aborted."
+            install_deps_fedora
+            ;;
+        opensuse*|sles)
+            ask "Install missing dependencies with zypper?" || die "Aborted."
+            install_deps_opensuse
+            ;;
+        debian|ubuntu|linuxmint|pop)
+            ask "Install missing dependencies with apt-get?" || die "Aborted."
+            install_deps_debian
+            ;;
+        arch|manjaro|endeavouros|garuda)
+            ask "Install missing dependencies with pacman?" || die "Aborted."
+            install_deps_arch
+            ;;
+        *)
+            SUPPORTED=0
+            ;;
+    esac
+
+    if [[ $SUPPORTED -eq 0 ]]; then
+        echo -e "${RED}✗ Unsupported distribution: ${DISTRO:-unknown}${NC}"
+        echo ""
+        echo "  Please install the following dependencies manually, then re-run:"
+        [[ $MISSING_PYTHON   -eq 1 ]] && echo "    • python3 >= 3.10"
+        [[ $MISSING_PIP      -eq 1 ]] && echo "    • pip (python3-pip)"
+        [[ $MISSING_PYQT6    -eq 1 ]] && echo "    • PyQt6 >= 6.4"
+        [[ $MISSING_NUMPY    -eq 1 ]] && echo "    • numpy >= 1.24"
+        [[ $MISSING_PIPEWIRE -eq 1 ]] && echo "    • PipeWire (pw-metadata, pw-dump, wpctl)"
+        exit 1
+    fi
+fi
+
+# ── Install application ───────────────────────────────────────────────────────
+info "Installing PipeWire Audio Control Center..."
+
+PIP_INSTALL_ARGS=(--user --quiet)
+if python3 -c "
+import sysconfig, pathlib
+if (pathlib.Path(sysconfig.get_path('stdlib')) / 'EXTERNALLY-MANAGED').exists():
+    raise SystemExit(0)
+raise SystemExit(1)
+" 2>/dev/null; then
+    PIP_INSTALL_ARGS+=(--break-system-packages)
+fi
+
+if [[ "$MODE" == "tarball" ]]; then
+    pip3 install "${PIP_INSTALL_ARGS[@]}" "$WHEEL"
+else
+    pip3 install "${PIP_INSTALL_ARGS[@]}" "$SCRIPT_DIR"
+fi
+
+# ── Install assets ────────────────────────────────────────────────────────────
+ICONS_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
+APPS_DIR="$HOME/.local/share/applications"
+mkdir -p "$ICONS_DIR" "$APPS_DIR"
+
+if [[ "$MODE" == "tarball" ]]; then
+    cp "$SCRIPT_DIR/pipewire-controller.png" "$ICONS_DIR/"
+    cp "$SCRIPT_DIR/pipewire-controller.desktop" "$APPS_DIR/"
+else
+    cp "$SCRIPT_DIR/resources/icons/pipewire-controller.py.png" "$ICONS_DIR/pipewire-controller.png"
+    cp "$SCRIPT_DIR/packaging/specs/pipewire-controller.desktop" "$APPS_DIR/"
+fi
+
+update-desktop-database "$APPS_DIR" 2>/dev/null || true
+gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
+
+# ── PATH setup ────────────────────────────────────────────────────────────────
+PATH_LINE='export PATH="$HOME/.local/bin:$PATH"'
+PROFILE="$HOME/.profile"
+
+if ! grep -qF "$PATH_LINE" "$PROFILE" 2>/dev/null; then
+    echo "" >> "$PROFILE"
+    echo "$PATH_LINE" >> "$PROFILE"
+    ok "Added ~/.local/bin to PATH in $PROFILE"
+    warn "Restart your session or run: export PATH=\"\$HOME/.local/bin:\$PATH\""
+fi
+
+ok "PipeWire Audio Control Center installed successfully!"
+echo ""
+echo -e "  Run ${BOLD}pipewire-controller${NC} to launch, or find it in your application menu."
+echo ""

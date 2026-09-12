@@ -1,36 +1,30 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# PipeWire Audio Control Center uninstaller.
+# Usage: ./uninstall [--wipe]
+set -euo pipefail
 
-echo "🗑️  Uninstalling PipeWire Controller..."
-echo
+WIPE=0
+[[ "${1:-}" == "--wipe" ]] && WIPE=1
 
-# Uninstall via pipx
-if command -v pipx &> /dev/null; then
-    echo "📦 Removing pipewire-controller via pipx..."
-    pipx uninstall pipewire-controller 2>/dev/null || true
+RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; NC='\033[0m'
+ok()   { echo -e "${GREEN}✓${NC} $*"; }
+info() { echo -e "${CYAN}→${NC} $*"; }
+die()  { echo -e "${RED}✗${NC} $*" >&2; exit 1; }
+
+ICONS_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
+APPS_DIR="$HOME/.local/share/applications"
+
+info "Uninstalling PipeWire Audio Control Center..."
+pip3 uninstall -y pipewire-controller 2>/dev/null || \
+    python3 -m pip uninstall -y pipewire-controller 2>/dev/null || true
+rm -f "$ICONS_DIR/pipewire-controller.png"
+rm -f "$APPS_DIR/pipewire-controller.desktop"
+update-desktop-database "$APPS_DIR" 2>/dev/null || true
+gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
+ok "PipeWire Audio Control Center uninstalled."
+
+if [[ $WIPE -eq 1 ]]; then
+    info "Wiping configuration..."
+    rm -rf "$HOME/.config/pipewire-controller"
+    ok "Configuration removed."
 fi
-
-# Remove desktop entry
-if [ -f ~/.local/share/applications/pipewire-controller.desktop ]; then
-    echo "🖥️  Removing desktop entry..."
-    rm ~/.local/share/applications/pipewire-controller.desktop
-fi
-
-# Remove autostart entry
-if [ -f ~/.config/autostart/pipewire-controller.desktop ]; then
-    echo "🚫 Removing autostart entry..."
-    rm ~/.config/autostart/pipewire-controller.desktop
-fi
-
-# Ask about config
-echo
-read -p "Remove configuration files (~/.config/pipewire-controller)? [y/N] " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    if [ -d ~/.config/pipewire-controller ]; then
-        echo "🗑️  Removing configuration..."
-        rm -rf ~/.config/pipewire-controller
-    fi
-fi
-
-echo
-echo "✅ Uninstall complete!"

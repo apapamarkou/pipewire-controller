@@ -55,3 +55,4 @@ Thumbs.db
 
 # Project specific
 *.pid
+packaging/output/
