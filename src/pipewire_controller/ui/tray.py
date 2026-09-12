@@ -46,6 +46,7 @@ class TrayApp(QApplication):
 
         self._config = load_config()
         self._panel: ControlPanel | None = None
+        self._controller = None
         self._about_dialog: AboutDialog | None = None
         self._shortcuts: ShortcutManager | None = None
 
@@ -56,9 +57,7 @@ class TrayApp(QApplication):
         self._tray.activated.connect(self._on_tray_activated)
         self._tray.show()
 
-        # Build panel after event loop starts so geometry is correct
         QTimer.singleShot(0, self._init_panel)
-
         self.aboutToQuit.connect(self._on_quit)
 
     def _build_tray_menu(self) -> QMenu:
@@ -67,25 +66,17 @@ class TrayApp(QApplication):
             "QMenu { background: #1a1a1a; color: #e0e0e0; border: 1px solid #2d2d2d; }"
             "QMenu::item:selected { background: #2e2e2e; }"
         )
-
         show_action = menu.addAction("Show / Hide Panel")
         show_action.triggered.connect(self._toggle_panel)
-
         menu.addSeparator()
-
         status_action = menu.addAction("System Status…")
         status_action.triggered.connect(self._show_system_status)
-
         menu.addSeparator()
-
         about_action = menu.addAction(f"About  (v{__version__})")
         about_action.triggered.connect(self._show_about)
-
         menu.addSeparator()
-
         quit_action = menu.addAction("Quit")
         quit_action.triggered.connect(self.quit)
-
         return menu
 
     def _init_panel(self) -> None:
@@ -93,7 +84,11 @@ class TrayApp(QApplication):
         self._shortcuts = ShortcutManager(self._panel)
         self._shortcuts.setup_defaults(self._toggle_panel)
 
-        # Show panel on startup
+        # Wire the application controller (sections + PipeWire)
+        from ..controller import AppController
+
+        self._controller = AppController(self._panel, self._config)
+
         self._panel.show()
         self._panel.raise_()
 
@@ -129,12 +124,5 @@ def run(argv: list[str] | None = None) -> int:
     setup_logging()
     if argv is None:
         argv = sys.argv
-
-    # Handle --toggle CLI flag for external shortcut integration
-    if "--toggle" in argv:
-        # Send signal to running instance via config-based IPC (future phase)
-        # For now, just start normally
-        argv = [a for a in argv if a != "--toggle"]
-
     app = TrayApp(argv)
     return app.exec()
