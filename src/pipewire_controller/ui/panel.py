@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import (
     QApplication,
@@ -244,7 +244,7 @@ class ControlPanel(QWidget):
             return
         geo = screen.availableGeometry()
         w = self._config.get("window", {}).get("width", _DEFAULT_WIDTH)
-        self.setGeometry(geo.right() - w, geo.top(), w, geo.height())
+        self.setGeometry(geo.x() + geo.width() - w, geo.y(), w, geo.height())
 
     def save_geometry(self) -> None:
         self._config.setdefault("window", {})["width"] = self.width()
@@ -256,6 +256,8 @@ class ControlPanel(QWidget):
             self.show()
             self.raise_()
             self.activateWindow()
+            if not self._floating:
+                QTimer.singleShot(0, self.reposition)
 
     def _in_resize_zone(self, x: int) -> bool:
         return x <= _RESIZE_MARGIN

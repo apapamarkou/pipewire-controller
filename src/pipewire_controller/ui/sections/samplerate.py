@@ -58,19 +58,20 @@ class SampleRateSection(QWidget):
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(6)
 
-        # ── Sample Rate ───────────────────────────────────────────────────────
-        layout.addWidget(self._make_label("SAMPLE RATE"))
+        # ── Sample Rate + Quantum side by side ────────────────────────────────
+        columns = QHBoxLayout()
+        columns.setSpacing(12)
+        layout.addLayout(columns)
 
-        rate_row = QHBoxLayout()
+        # Left: Sample Rate
+        rate_col = QVBoxLayout()
+        rate_col.setSpacing(4)
+        rate_col.addWidget(self._make_label("SAMPLE RATE"))
         self._rate_combo = QComboBox()
         self._rate_combo.setMinimumWidth(100)
         self._populate_rates(_FALLBACK_RATES)
-        rate_row.addWidget(self._rate_combo)
-        rate_row.addStretch()
-        layout.addLayout(rate_row)
-
-        # Force / Auto
-        mode_row = QHBoxLayout()
+        rate_col.addWidget(self._rate_combo)
+        rate_mode_row = QHBoxLayout()
         self._rate_force_rb = QRadioButton("Force")
         self._rate_auto_rb = QRadioButton("Auto")
         self._rate_auto_rb.setChecked(True)
@@ -79,31 +80,26 @@ class SampleRateSection(QWidget):
         self._rate_group.addButton(self._rate_auto_rb)
         for rb in (self._rate_force_rb, self._rate_auto_rb):
             rb.setStyleSheet(f"color: {TEXT_SECONDARY}; font-size: 11px; background: transparent;")
-            mode_row.addWidget(rb)
-        mode_row.addStretch()
-        layout.addLayout(mode_row)
+            rate_mode_row.addWidget(rb)
+        rate_mode_row.addStretch()
+        rate_col.addLayout(rate_mode_row)
+        self._rate_actual_lbl = QLabel("")
+        self._rate_actual_lbl.setStyleSheet(_DIM_STYLE)
+        rate_col.addWidget(self._rate_actual_lbl)
+        rate_col.addStretch()
+        columns.addLayout(rate_col)
 
         self._rate_force_rb.toggled.connect(self._on_rate_mode_changed)
 
-        # Actual state
-        self._rate_actual_lbl = QLabel("")
-        self._rate_actual_lbl.setStyleSheet(_DIM_STYLE)
-        layout.addWidget(self._rate_actual_lbl)
-
-        layout.addSpacing(4)
-
-        # ── Quantum ───────────────────────────────────────────────────────────
-        layout.addWidget(self._make_label("BUFFER / QUANTUM"))
-
-        q_row = QHBoxLayout()
+        # Right: Quantum
+        q_col = QVBoxLayout()
+        q_col.setSpacing(4)
+        q_col.addWidget(self._make_label("BUFFER / QUANTUM"))
         self._quantum_combo = QComboBox()
         self._quantum_combo.setMinimumWidth(100)
         for q in _QUANTUM_VALUES:
             self._quantum_combo.addItem(str(q), q)
-        q_row.addWidget(self._quantum_combo)
-        q_row.addStretch()
-        layout.addLayout(q_row)
-
+        q_col.addWidget(self._quantum_combo)
         q_mode_row = QHBoxLayout()
         self._q_force_rb = QRadioButton("Force")
         self._q_auto_rb = QRadioButton("Auto")
@@ -115,16 +111,17 @@ class SampleRateSection(QWidget):
             rb.setStyleSheet(f"color: {TEXT_SECONDARY}; font-size: 11px; background: transparent;")
             q_mode_row.addWidget(rb)
         q_mode_row.addStretch()
-        layout.addLayout(q_mode_row)
+        q_col.addLayout(q_mode_row)
+        self._quantum_actual_lbl = QLabel("")
+        self._quantum_actual_lbl.setStyleSheet(_DIM_STYLE)
+        q_col.addWidget(self._quantum_actual_lbl)
+        q_col.addStretch()
+        columns.addLayout(q_col)
 
         self._q_force_rb.toggled.connect(self._on_quantum_mode_changed)
 
-        self._quantum_actual_lbl = QLabel("")
-        self._quantum_actual_lbl.setStyleSheet(_DIM_STYLE)
-        layout.addWidget(self._quantum_actual_lbl)
-
         # Period info
-        layout.addSpacing(4)
+        layout.addSpacing(2)
         self._period_lbl = QLabel("")
         self._period_lbl.setStyleSheet(_DIM_STYLE)
         layout.addWidget(self._period_lbl)

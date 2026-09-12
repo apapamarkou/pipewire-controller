@@ -115,6 +115,8 @@ class TrayApp(QApplication):
             self._toggle_panel()
 
     def _on_quit(self) -> None:
+        if self._controller is not None:
+            self._controller.shutdown()
         if self._panel is not None:
             self._panel.save_geometry()
         save_config(self._config)

@@ -4,9 +4,6 @@
 Input / Output meter sections.
 
 These sections display real-time level meters for audio channels.
-In Phase 7, meters are populated from the device model.
-Real-time audio capture via PyAudio is wired in the controller.
-
 The GUI receives pre-processed meter snapshots — it never performs
 audio analysis itself.
 """
@@ -37,6 +34,8 @@ _DIM_STYLE = f"color: {TEXT_DIM}; font-size: 10px; background: transparent;"
 _VALUE_STYLE = f"color: {TEXT_PRIMARY}; font-size: 10px; background: transparent;"
 _OVER_STYLE = f"color: {C_ERROR}; font-size: 10px; font-weight: bold; background: transparent;"
 
+_BAR_HEIGHT = 70  # fixed px — prevents collapse inside QScrollArea
+
 
 class ChannelMeterWidget(QWidget):
     """
@@ -58,7 +57,8 @@ class ChannelMeterWidget(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
         self._bar = MeterBar()
-        layout.addWidget(self._bar, 1)
+        self._bar.setFixedHeight(_BAR_HEIGHT)
+        layout.addWidget(self._bar)
 
         self._name_lbl = QLabel(self._meter.name or "—")
         self._name_lbl.setStyleSheet(_DIM_STYLE)
@@ -111,6 +111,7 @@ class MeterSection(QWidget):
     Base class for Input/Output meter sections.
 
     Displays a row of ChannelMeterWidgets with mode selector and clear button.
+    One widget per node (showing the node's peak across all its channels).
     """
 
     clear_requested = pyqtSignal()
@@ -126,7 +127,6 @@ class MeterSection(QWidget):
         layout.setContentsMargins(6, 4, 6, 4)
         layout.setSpacing(4)
 
-        # Controls row
         ctrl = QHBoxLayout()
         lbl = QLabel(self._title)
         lbl.setStyleSheet(_LABEL_STYLE)
@@ -144,12 +144,11 @@ class MeterSection(QWidget):
         ctrl.addWidget(clear_btn)
         layout.addLayout(ctrl)
 
-        # Meter bars in a scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setFixedHeight(120)
+        scroll.setFixedHeight(_BAR_HEIGHT + 50)  # bar + labels
 
         self._meters_widget = QWidget()
         self._meters_layout = QHBoxLayout(self._meters_widget)
@@ -161,14 +160,13 @@ class MeterSection(QWidget):
         layout.addWidget(scroll)
         self._scroll = scroll
 
-        self._empty_lbl = QLabel("No channels — connect an audio device")
+        self._empty_lbl = QLabel("No audio devices found")
         self._empty_lbl.setStyleSheet(_DIM_STYLE)
         layout.addWidget(self._empty_lbl)
         self._empty_lbl.setVisible(True)
 
     def set_channels(self, meters: list[ChannelMeter]) -> None:
-        """Rebuild channel widgets from a list of ChannelMeter objects."""
-        # Clear existing
+        """Rebuild channel widgets. One ChannelMeter = one bar (one per node)."""
         while self._meters_layout.count() > 1:
             item = self._meters_layout.takeAt(0)
             if item.widget():
@@ -180,8 +178,9 @@ class MeterSection(QWidget):
             self._meters_layout.insertWidget(self._meters_layout.count() - 1, w)
             self._channel_widgets.append(w)
 
-        self._empty_lbl.setVisible(len(meters) == 0)
-        self._scroll.setVisible(len(meters) > 0)
+        has = len(meters) > 0
+        self._empty_lbl.setVisible(not has)
+        self._scroll.setVisible(has)
 
     def update_meters(self, snapshots: list[dict]) -> None:
         """Update meter displays from pre-processed snapshots. Call from GUI thread."""
@@ -190,7 +189,6 @@ class MeterSection(QWidget):
             if i >= len(self._channel_widgets):
                 break
             if mode == "RMS":
-                # Substitute peak with RMS for display
                 display_snap = dict(snap)
                 display_snap["peak_dbfs"] = snap["rms_dbfs"]
                 self._channel_widgets[i].update_from_snapshot(display_snap)

@@ -2,7 +2,7 @@
 Type=Application
 Name=PipeWire Audio Control Center
 Comment=DAW Companion — PipeWire audio control and monitoring
-Exec=pipewire-controller
+Exec=env QT_QPA_PLATFORM=xcb pipewire-controller
 Icon=pipewire-controller
 Categories=AudioVideo;Audio;
 Terminal=false

@@ -2,7 +2,12 @@
 # Copyright (C) 2024 Andrianos Papamarkou
 """Application entry point."""
 
+import os
 import sys
+
+# Wayland compositors ignore setGeometry(); force XWayland so window positioning works.
+if "WAYLAND_DISPLAY" in os.environ and "QT_QPA_PLATFORM" not in os.environ:
+    os.environ["QT_QPA_PLATFORM"] = "xcb"
 
 from .log import setup_logging
 from .ui.tray import run

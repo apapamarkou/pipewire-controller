@@ -237,7 +237,14 @@ class DevicesSection(QWidget):
             return
         for nid, w in self._node_widgets.items():
             if nid == node_id:
-                if w._node.is_sink:
+                is_sink = w._node.is_sink
+                # Immediately uncheck all other nodes of the same direction
+                for other_id, other_w in self._node_widgets.items():
+                    if other_id != node_id and other_w._node.is_sink == is_sink:
+                        other_w._default_cb.blockSignals(True)
+                        other_w._default_cb.setChecked(False)
+                        other_w._default_cb.blockSignals(False)
+                if is_sink:
                     self.default_sink_changed.emit(node_id)
                 else:
                     self.default_source_changed.emit(node_id)

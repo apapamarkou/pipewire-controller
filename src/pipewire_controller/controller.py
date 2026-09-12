@@ -13,6 +13,9 @@ Responsibilities:
 
 from __future__ import annotations
 
+import subprocess
+import threading
+
 from PyQt6.QtCore import QTimer
 
 from .config import active_preset, save, save_preset
@@ -30,7 +33,10 @@ from .ui.sections.samplerate import SampleRateSection
 
 log = get_logger("controller")
 
-_REFRESH_MS = 2000  # graph refresh interval
+_REFRESH_MS = 2000
+_METER_MS = 100
+_CAPTURE_RATE = 48000
+_CAPTURE_FRAMES = 512
 
 
 def _with_force_rate(s: GraphSettings, rate: int) -> GraphSettings:
@@ -73,12 +79,25 @@ class AppController:
         self._master_meter_section: MasterMeterSection | None = None
         self._config_section: ConfigSection | None = None
 
+        # Audio capture state
+        self._output_meters: list[ChannelMeter] = []
+        self._input_meters: list[ChannelMeter] = []
+        self._capture_out_proc: subprocess.Popen | None = None
+        self._capture_out_thread: threading.Thread | None = None
+        # per source node: node_id -> (proc, thread, [ChannelMeter, ...])
+        self._capture_in_procs: dict[int, tuple[subprocess.Popen, threading.Thread]] = {}
+        self._capture_lock = threading.Lock()
+
         self._build_sections()
         self._connect_signals()
 
         self._refresh_timer = QTimer()
         self._refresh_timer.timeout.connect(self._refresh_graph)
         self._refresh_timer.start(_REFRESH_MS)
+
+        self._meter_timer = QTimer()
+        self._meter_timer.timeout.connect(self._push_meter_snapshots)
+        self._meter_timer.start(_METER_MS)
 
         # Initial load
         self._refresh_graph()
@@ -171,36 +190,204 @@ class AppController:
         self._latency_section.update_settings(settings)
         self._update_meter_channels(graph)
 
-    # ── Meter channel population ──────────────────────────────────────────────
+    # ── Meter channel population + capture ───────────────────────────────────
 
     def _update_meter_channels(self, graph) -> None:
-        def _meters_for_nodes(nodes):
-            result = []
-            for n in nodes:
-                positions = (
-                    n.channel_positions if n.channel_positions else ["L", "R"][: n.channel_count]
-                )
-                for i, pos in enumerate(positions):
-                    result.append(
-                        ChannelMeter(name=pos, node_name=n.display_name, channel_number=i)
-                    )
-            return result
+        # One meter per channel per node — flat list matching capture interleave order
+        input_meters = [
+            ChannelMeter(name=pos, node_name=n.display_name, channel_number=i)
+            for n in graph.sources
+            for i, pos in enumerate(
+                n.channel_positions if n.channel_positions else ["L", "R"][: n.channel_count]
+            )
+        ]
+        output_meters = [
+            ChannelMeter(name=pos, node_name=n.display_name, channel_number=i)
+            for n in graph.sinks
+            for i, pos in enumerate(
+                n.channel_positions if n.channel_positions else ["L", "R"][: n.channel_count]
+            )
+        ]
 
-        input_meters = _meters_for_nodes(graph.sources)
-        output_meters = _meters_for_nodes(graph.sinks)
-
-        # Only rebuild widgets when channel layout changes
-        in_key = [(m.name, m.node_name) for m in input_meters]
-        out_key = [(m.name, m.node_name) for m in output_meters]
+        in_key = [(m.node_name, m.name) for m in input_meters]
+        out_key = [(m.node_name, m.name) for m in output_meters]
         if in_key != getattr(self, "_last_in_key", None):
             self._input_meter_section.set_channels(input_meters)
+            with self._capture_lock:
+                self._input_meters = input_meters
             self._last_in_key = in_key
+            self._restart_input_capture(graph.sources)
         if out_key != getattr(self, "_last_out_key", None):
             self._output_meter_section.set_channels(output_meters)
+            with self._capture_lock:
+                self._output_meters = output_meters
             self._last_out_key = out_key
+            self._restart_output_capture()
 
         output_names = [n.display_name for n in graph.sinks]
         self._master_meter_section.update_available_outputs(output_names)
+
+    def _restart_output_capture(self) -> None:
+        if self._capture_out_proc is not None:
+            try:
+                self._capture_out_proc.terminate()
+                self._capture_out_proc.wait(timeout=2)
+            except Exception:
+                pass
+            self._capture_out_proc = None
+
+        if self._graph is None:
+            return
+        meter_offset = 0
+        for node in self._graph.sinks:
+            ch_count = node.channel_count or 2
+            proc = self._launch_pw_record(
+                name=f"pipewire-controller-out-{node.id}",
+                channels=ch_count,
+                target=str(node.id),
+                extra_props={"stream.capture.sink": "true", "node.passive": "true"},
+            )
+            if proc is None:
+                meter_offset += ch_count
+                continue
+            offset = meter_offset
+            t = threading.Thread(
+                target=self._capture_loop_channels,
+                args=(proc, ch_count, offset, self._output_meters),
+                daemon=True,
+            )
+            t.start()
+            meter_offset += ch_count
+
+    def _restart_input_capture(self, sources) -> None:
+        for proc, _ in self._capture_in_procs.values():
+            try:
+                proc.terminate()
+            except Exception:
+                pass
+        self._capture_in_procs.clear()
+
+        meter_offset = 0
+        for node in sources:
+            ch_count = node.channel_count or 2
+            proc = self._launch_pw_record(
+                name=f"pipewire-controller-in-{node.id}",
+                channels=ch_count,
+                target=str(node.id),
+                extra_props={"node.passive": "true"},
+            )
+            if proc is None:
+                meter_offset += ch_count
+                continue
+            offset = meter_offset
+            t = threading.Thread(
+                target=self._capture_loop_channels,
+                args=(proc, ch_count, offset, self._input_meters),
+                daemon=True,
+            )
+            self._capture_in_procs[node.id] = (proc, t)
+            t.start()
+            meter_offset += ch_count
+
+    def _launch_pw_record(
+        self,
+        name: str,
+        channels: int,
+        target: str = "auto",
+        extra_props: dict | None = None,
+    ) -> subprocess.Popen | None:
+        import json as _json
+
+        props = {"node.name": name, "media.name": name}
+        if extra_props:
+            props.update(extra_props)
+        try:
+            return subprocess.Popen(
+                [
+                    "pw-record",
+                    "--target",
+                    target,
+                    "--channels",
+                    str(channels),
+                    "--rate",
+                    str(_CAPTURE_RATE),
+                    "--format",
+                    "f32",
+                    "--latency",
+                    "512",
+                    "-P",
+                    _json.dumps(props),
+                    "-",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+        except FileNotFoundError:
+            log.warning("pw-record not found — meters disabled")
+            return None
+
+    def _stop_capture(self) -> None:
+        if self._capture_out_proc is not None:
+            try:
+                self._capture_out_proc.terminate()
+                self._capture_out_proc.wait(timeout=2)
+            except Exception:
+                pass
+            self._capture_out_proc = None
+        for proc, _ in list(self._capture_in_procs.values()):
+            try:
+                proc.terminate()
+                proc.wait(timeout=2)
+            except Exception:
+                pass
+        self._capture_in_procs.clear()
+
+    def shutdown(self) -> None:
+        """Clean up all capture processes. Call before app exit."""
+        self._refresh_timer.stop()
+        self._meter_timer.stop()
+        self._stop_capture()
+        log.info("Controller shutdown complete")
+
+    def _capture_loop_channels(
+        self,
+        proc: subprocess.Popen,
+        ch_count: int,
+        meter_offset: int,
+        meter_list: list[ChannelMeter],
+    ) -> None:
+        import numpy as np
+
+        bytes_per_frame = ch_count * 4
+        chunk = bytes_per_frame * _CAPTURE_FRAMES
+        while proc.poll() is None:
+            data = proc.stdout.read(chunk)
+            if not data:
+                break
+            n_frames = len(data) // bytes_per_frame
+            if n_frames == 0:
+                continue
+            samples = np.frombuffer(data[: n_frames * bytes_per_frame], dtype=np.float32)
+            samples = samples.reshape(-1, ch_count)
+            with self._capture_lock:
+                meters = meter_list[meter_offset : meter_offset + ch_count]
+            for i, meter in enumerate(meters):
+                meter.process_block(samples[:, i])
+
+    def _push_meter_snapshots(self) -> None:
+        with self._capture_lock:
+            out_snaps = [m.snapshot() for m in self._output_meters]
+            in_snaps = [m.snapshot() for m in self._input_meters]
+        if out_snaps:
+            self._output_meter_section.update_meters(out_snaps)
+            self._master_meter_section.update_levels(
+                peaks_db=[s["peak_dbfs"] for s in out_snaps],
+                rms_db=[s["rms_dbfs"] for s in out_snaps],
+                peak_holds_db=[s["peak_hold_dbfs"] for s in out_snaps],
+                overs=[s["over"] for s in out_snaps],
+            )
+        if in_snaps:
+            self._input_meter_section.update_meters(in_snaps)
 
     # ── Device handlers ───────────────────────────────────────────────────────
 
