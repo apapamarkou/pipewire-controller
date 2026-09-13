@@ -47,6 +47,7 @@ class MasterMeterSection(QWidget):
 
     channel_source_changed = pyqtSignal(int, str)  # channel_idx, source_name
     mode_changed = pyqtSignal(str)
+    channel_map_changed = pyqtSignal(dict)  # {channel_idx: source_name}
 
     def __init__(
         self, available_outputs: list[str] | None = None, parent: QWidget | None = None
@@ -158,12 +159,30 @@ class MasterMeterSection(QWidget):
             for out in self._available_outputs:
                 combo.addItem(out)
             combo.currentTextChanged.connect(
-                lambda text, idx=i: self.channel_source_changed.emit(idx, text)
+                lambda text, idx=i: self._on_channel_source_changed(idx, text)
             )
             row.addWidget(lbl)
             row.addWidget(combo, 1)
             self._channel_combos.append(combo)
             self._channels_layout.addLayout(row)
+
+    def _on_channel_source_changed(self, idx: int, text: str) -> None:
+        self.channel_source_changed.emit(idx, text)
+        self.channel_map_changed.emit(self.get_channel_map())
+
+    def get_channel_map(self) -> dict:
+        return {i: c.currentText() for i, c in enumerate(self._channel_combos)}
+
+    def set_channel_map(self, channel_map: dict) -> None:
+        """Restore combo selections by index. Silently skips missing entries."""
+        for i, combo in enumerate(self._channel_combos):
+            text = channel_map.get(str(i)) or channel_map.get(i)
+            if text:
+                idx = combo.findText(text)
+                if idx >= 0:
+                    combo.blockSignals(True)
+                    combo.setCurrentIndex(idx)
+                    combo.blockSignals(False)
 
     def set_mode(self, mode: str) -> None:
         self._mode_combo.blockSignals(True)

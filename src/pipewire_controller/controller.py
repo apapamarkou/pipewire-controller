@@ -101,15 +101,19 @@ class AppController:
         self._meter_timer.start(_METER_MS)
 
         # Initial load
-        self._apply_auto_load()
         self._refresh_graph()
+        self._apply_auto_load()
 
     def _apply_auto_load(self) -> None:
         """Apply active preset force settings on startup if auto_load is enabled."""
+        preset = active_preset(self._config)
+        # Always restore master meter mode + channel map from preset
+        w = self._config.setdefault("window", {})
+        w.setdefault("master_mode", preset.get("master_mode", "Stereo"))
+        w.setdefault("master_channel_map", preset.get("master_channel_map", {}))
         self._restore_meter_modes()
         if not self._config.get("window", {}).get("auto_load", False):
             return
-        preset = active_preset(self._config)
         if preset.get("force_rate"):
             rate = preset.get("samplerate")
             self._user_force_rate = rate
@@ -128,6 +132,9 @@ class AppController:
         self._input_meter_section.set_mode(w.get("input_meter_mode", "Peak"))
         self._output_meter_section.set_mode(w.get("output_meter_mode", "Peak"))
         self._master_meter_section.set_mode(w.get("master_mode", "Stereo"))
+        channel_map = w.get("master_channel_map", {})
+        if channel_map:
+            self._master_meter_section.set_channel_map(channel_map)
 
     def _build_sections(self) -> None:
         # Devices / I/O
@@ -196,6 +203,9 @@ class AppController:
         )
         self._master_meter_section.mode_changed.connect(
             lambda m: self._config.setdefault("window", {}).__setitem__("master_mode", m)
+        )
+        self._master_meter_section.channel_map_changed.connect(
+            lambda cm: self._config.setdefault("window", {}).__setitem__("master_channel_map", cm)
         )
 
     def _refresh_graph(self) -> None:
@@ -562,6 +572,10 @@ class AppController:
             preset["force_rate"] = self._user_force_rate is not None
             preset["force_quantum"] = self._user_force_quantum is not None
         preset["panel_width"] = self._panel.width()
+        # Persist master meter state into preset
+        w = self._config.get("window", {})
+        preset["master_mode"] = w.get("master_mode", "Stereo")
+        preset["master_channel_map"] = w.get("master_channel_map", {})
         save_preset(self._config, preset)
         save(self._config)
         log.info("Configuration saved: %s", preset.get("name"))
@@ -598,6 +612,10 @@ class AppController:
         else:
             self._user_force_quantum = None
             pw_client.clear_force_quantum()
+        # Restore master meter mode + channel map from preset into window state
+        w = self._config.setdefault("window", {})
+        w["master_mode"] = preset.get("master_mode", "Stereo")
+        w["master_channel_map"] = preset.get("master_channel_map", {})
         self._refresh_graph()
         self._restore_meter_modes()
         log.info("Loaded configuration: %s", name)

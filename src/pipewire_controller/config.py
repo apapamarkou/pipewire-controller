@@ -46,6 +46,10 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         "docked": True,
         "always_on_top": False,
         "pinned": False,
+        "input_meter_mode": "Peak",
+        "output_meter_mode": "Peak",
+        "master_mode": "Stereo",
+        "master_channel_map": {},
     },
 }
 
