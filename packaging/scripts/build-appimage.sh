@@ -35,7 +35,7 @@ EOF
 sed 's/^Name=.*/Name=PipeWireController/' \
     "$REPO_ROOT/packaging/specs/pipewire-controller.desktop" \
     > "$APPDIR_META/pipewire-controller.desktop"
-cp "$REPO_ROOT/resources/icons/pipewire-controller.py.png"  "$APPDIR_META/pipewire-controller.png"
+cp "$REPO_ROOT/resources/icons/pipewire-controller.png" "$APPDIR_META/pipewire-controller.png"
 
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$APPDIR_META" "$WORKDIR"' EXIT

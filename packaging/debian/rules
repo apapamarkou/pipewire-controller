@@ -22,7 +22,11 @@ override_dh_auto_install:
 	fi
 	install -Dm644 packaging/specs/pipewire-controller.desktop \
 		debian/pipewire-controller/usr/share/applications/pipewire-controller.desktop
-	install -Dm644 resources/icons/pipewire-controller.py.png \
-		debian/pipewire-controller/usr/share/icons/hicolor/256x256/apps/pipewire-controller.png
+	install -Dm644 resources/icons/pipewire-controller.png \
+		debian/pipewire-controller/usr/share/icons/hicolor/512x512/apps/pipewire-controller.png
+	install -Dm644 resources/icons/pipewire-controller.dark.png \
+		debian/pipewire-controller/usr/share/icons/hicolor/128x128/apps/pipewire-controller.dark.png
+	install -Dm644 resources/icons/pipewire-controller.light.png \
+		debian/pipewire-controller/usr/share/icons/hicolor/128x128/apps/pipewire-controller.light.png
 
 override_dh_usrlocal:

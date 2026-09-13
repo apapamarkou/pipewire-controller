@@ -35,6 +35,14 @@ docker run --rm \
         mkdir -p \$RPMBUILD/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
         git -C /src archive --format=tar.gz --prefix=pipewire-controller-$VERSION/ HEAD \
             -o \$RPMBUILD/SOURCES/pipewire-controller-$VERSION.tar.gz
+        # Inject untracked icons into the source tarball
+        cd \$RPMBUILD/SOURCES
+        tar -xzf pipewire-controller-$VERSION.tar.gz
+        cp /src/resources/icons/pipewire-controller.png      pipewire-controller-$VERSION/resources/icons/
+        cp /src/resources/icons/pipewire-controller.dark.png  pipewire-controller-$VERSION/resources/icons/
+        cp /src/resources/icons/pipewire-controller.light.png pipewire-controller-$VERSION/resources/icons/
+        tar -czf pipewire-controller-$VERSION.tar.gz pipewire-controller-$VERSION/
+        rm -rf pipewire-controller-$VERSION/
         cp /src/packaging/specs/pipewire-controller.spec \$RPMBUILD/SPECS/
         sed -i 's|python3 -m pip install --no-build-isolation --root=%{buildroot} --prefix=%{_prefix} .|pip3 install --no-deps --root=%{buildroot} --prefix=%{_prefix} /wheels/pipewire_controller-*.whl|' \$RPMBUILD/SPECS/pipewire-controller.spec
         sed -i 's|Requires:.*python3-pyqt6.*|Requires:       python3-qt6 >= 6.4|' \$RPMBUILD/SPECS/pipewire-controller.spec

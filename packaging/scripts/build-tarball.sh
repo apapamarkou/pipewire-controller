@@ -17,7 +17,9 @@ python3 -m pip wheel "$REPO_ROOT" --no-deps -w "$STAGING/wheels" -q
 
 echo "→ Copying assets"
 cp "$REPO_ROOT/packaging/specs/pipewire-controller.desktop" "$STAGING/"
-cp "$REPO_ROOT/resources/icons/pipewire-controller.py.png"  "$STAGING/pipewire-controller.png"
+cp "$REPO_ROOT/resources/icons/pipewire-controller.dark.png"  "$STAGING/pipewire-controller.dark.png"
+cp "$REPO_ROOT/resources/icons/pipewire-controller.light.png" "$STAGING/pipewire-controller.light.png"
+cp "$REPO_ROOT/resources/icons/pipewire-controller.png"       "$STAGING/pipewire-controller.png"
 cp "$REPO_ROOT/README.md"                                    "$STAGING/"
 cp "$REPO_ROOT/LICENSE"                                      "$STAGING/"
 cp "$REPO_ROOT/install"                                      "$STAGING/install"

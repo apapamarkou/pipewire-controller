@@ -203,9 +203,13 @@ class ControlPanel(QWidget):
             subprocess.run(
                 [
                     "xprop",
-                    "-id", str(int(wid)),
-                    "-f", "_NET_WM_STATE", "32a",
-                    "-set", "_NET_WM_STATE",
+                    "-id",
+                    str(int(wid)),
+                    "-f",
+                    "_NET_WM_STATE",
+                    "32a",
+                    "-set",
+                    "_NET_WM_STATE",
                     "_NET_WM_STATE_SKIP_TASKBAR,_NET_WM_STATE_SKIP_PAGER",
                 ],
                 stdout=subprocess.DEVNULL,

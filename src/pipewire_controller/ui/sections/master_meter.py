@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..components.combo_box import NoScrollComboBox
+from ..components.combo_box import NoScrollComboBox as QComboBox
 from ..components.meter_bar import MeterBar
 from ..theme import TEXT_DIM, TEXT_LABEL, TEXT_PRIMARY
 

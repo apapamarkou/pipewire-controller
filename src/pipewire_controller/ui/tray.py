@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 
 from PyQt6.QtCore import QTimer
-from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtGui import QIcon
+from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from .. import __version__
@@ -22,17 +22,19 @@ from .panel import ControlPanel
 
 log = get_logger("tray")
 
-_ICON_PATHS = [
-    Path.home() / ".local/share/icons/pipewire-controller.png",
-    Path(__file__).parent.parent.parent.parent / "resources/icons/pipewire-controller.py.png",
-    Path(__file__).parent.parent / "resources/icons/pipewire-controller.py.png",
-]
-
 
 def _find_icon() -> QIcon:
-    for p in _ICON_PATHS:
+    """Return tray icon, preferring dark variant then light then installed."""
+    res = Path(__file__).parent.parent.parent.parent / "resources/icons"
+    if not res.exists():
+        res = Path(__file__).parent.parent / "resources/icons"
+    for name in ("pipewire-controller.dark.png", "pipewire-controller.light.png"):
+        p = res / name
         if p.exists():
             return QIcon(str(p))
+    installed = Path.home() / ".local/share/icons/hicolor/512x512/apps/pipewire-controller.png"
+    if installed.exists():
+        return QIcon(str(installed))
     return QIcon.fromTheme("audio-card", QIcon.fromTheme("multimedia-volume-control"))
 
 
@@ -126,8 +128,10 @@ class TrayApp(QApplication):
         dlg.exec()
 
     def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
-        if reason in (QSystemTrayIcon.ActivationReason.Trigger,
-                      QSystemTrayIcon.ActivationReason.MiddleClick):
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.MiddleClick,
+        ):
             self._toggle_panel()
 
     def _on_quit(self) -> None:
@@ -161,6 +165,7 @@ def run(argv: list[str] | None = None) -> int:
     # Check for existing instance before creating QApplication
     # QLocalSocket needs a QCoreApplication; use a temporary one
     from PyQt6.QtCore import QCoreApplication
+
     tmp = QCoreApplication(argv)
     already_running = _send_toggle()
     del tmp

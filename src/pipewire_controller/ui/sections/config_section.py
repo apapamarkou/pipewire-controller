@@ -14,8 +14,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from ..theme import TEXT_DIM, TEXT_LABEL
 from ..components.combo_box import NoScrollComboBox
+from ..theme import TEXT_DIM, TEXT_LABEL
 
 _LABEL_STYLE = (
     f"color: {TEXT_LABEL}; font-size: 10px; font-weight: bold; "

@@ -38,7 +38,7 @@ bash install --non-interactive
 echo "→ Verifying installation"
 python3 -c "import pipewire_controller; print('import OK')"
 test -f "$HOME/.local/share/applications/pipewire-controller.desktop" && echo "desktop file OK"
-test -f "$HOME/.local/share/icons/hicolor/256x256/apps/pipewire-controller.png" && echo "icon OK"
+test -f "$HOME/.local/share/icons/hicolor/512x512/apps/pipewire-controller.png" && echo "icon OK"
 echo "All checks passed"
 INNEREOF
 

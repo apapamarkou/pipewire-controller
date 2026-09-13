@@ -197,16 +197,21 @@ else
 fi
 
 # ── Install assets ────────────────────────────────────────────────────────────
-ICONS_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
+ICONS_512="$HOME/.local/share/icons/hicolor/512x512/apps"
+ICONS_128="$HOME/.local/share/icons/hicolor/128x128/apps"
 APPS_DIR="$HOME/.local/share/applications"
-mkdir -p "$ICONS_DIR" "$APPS_DIR"
+mkdir -p "$ICONS_512" "$ICONS_128" "$APPS_DIR"
 
 if [[ "$MODE" == "tarball" ]]; then
-    cp "$SCRIPT_DIR/pipewire-controller.png" "$ICONS_DIR/"
-    cp "$SCRIPT_DIR/pipewire-controller.desktop" "$APPS_DIR/"
+    cp "$SCRIPT_DIR/pipewire-controller.png"       "$ICONS_512/pipewire-controller.png"
+    cp "$SCRIPT_DIR/pipewire-controller.dark.png"  "$ICONS_128/pipewire-controller.dark.png"
+    cp "$SCRIPT_DIR/pipewire-controller.light.png" "$ICONS_128/pipewire-controller.light.png"
+    cp "$SCRIPT_DIR/pipewire-controller.desktop"   "$APPS_DIR/"
 else
-    cp "$SCRIPT_DIR/resources/icons/pipewire-controller.py.png" "$ICONS_DIR/pipewire-controller.png"
-    cp "$SCRIPT_DIR/packaging/specs/pipewire-controller.desktop" "$APPS_DIR/"
+    cp "$SCRIPT_DIR/resources/icons/pipewire-controller.png"       "$ICONS_512/pipewire-controller.png"
+    cp "$SCRIPT_DIR/resources/icons/pipewire-controller.dark.png"  "$ICONS_128/pipewire-controller.dark.png"
+    cp "$SCRIPT_DIR/resources/icons/pipewire-controller.light.png" "$ICONS_128/pipewire-controller.light.png"
+    cp "$SCRIPT_DIR/packaging/specs/pipewire-controller.desktop"   "$APPS_DIR/"
 fi
 
 update-desktop-database "$APPS_DIR" 2>/dev/null || true

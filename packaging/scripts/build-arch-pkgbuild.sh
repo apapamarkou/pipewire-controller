@@ -37,8 +37,12 @@ build() {
 package() {
     cd "\$srcdir/pipewire-controller-\$pkgver"
     python -m pip install --no-deps --root="\$pkgdir" --prefix=/usr dist/pipewire_controller-*.whl
-    install -Dm644 resources/icons/pipewire-controller.py.png \\
-        "\$pkgdir/usr/share/icons/hicolor/256x256/apps/pipewire-controller.png"
+    install -Dm644 resources/icons/pipewire-controller.png \\
+        "\$pkgdir/usr/share/icons/hicolor/512x512/apps/pipewire-controller.png"
+    install -Dm644 resources/icons/pipewire-controller.dark.png \\
+        "\$pkgdir/usr/share/icons/hicolor/128x128/apps/pipewire-controller.dark.png"
+    install -Dm644 resources/icons/pipewire-controller.light.png \\
+        "\$pkgdir/usr/share/icons/hicolor/128x128/apps/pipewire-controller.light.png"
     install -Dm644 packaging/specs/pipewire-controller.desktop \\
         "\$pkgdir/usr/share/applications/pipewire-controller.desktop"
     install -Dm644 LICENSE \\

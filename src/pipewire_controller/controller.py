@@ -86,6 +86,7 @@ class AppController:
         self._capture_out_thread: threading.Thread | None = None
         # per source node: node_id -> (proc, thread, [ChannelMeter, ...])
         self._capture_in_procs: dict[int, tuple[subprocess.Popen, threading.Thread]] = {}
+        self._all_procs: list[subprocess.Popen] = []  # every proc ever launched
         self._capture_lock = threading.Lock()
 
         self._build_sections()
@@ -309,6 +310,7 @@ class AppController:
         for proc, _ in self._capture_in_procs.values():
             try:
                 proc.terminate()
+                proc.wait(timeout=2)
             except Exception:
                 pass
         self._capture_in_procs.clear()
@@ -316,13 +318,13 @@ class AppController:
         meter_offset = 0
         for node in sources:
             ch_count = node.channel_count or 2
+            target = str(node.props.get("object.serial") or node.id)
             proc = self._launch_pw_record(
                 name=f"pipewire-controller-in-{node.id}",
                 channels=ch_count,
-                target=str(node.id),
+                target=target,
                 extra_props={
                     "node.passive": "true",
-                    "node.dont-reconnect": "true",
                 },
             )
             if proc is None:
@@ -351,7 +353,7 @@ class AppController:
         if extra_props:
             props.update(extra_props)
         try:
-            return subprocess.Popen(
+            proc = subprocess.Popen(
                 [
                     "pw-record",
                     "--target",
@@ -371,6 +373,8 @@ class AppController:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
             )
+            self._all_procs.append(proc)
+            return proc
         except FileNotFoundError:
             log.warning("pw-record not found — meters disabled")
             return None
@@ -395,7 +399,20 @@ class AppController:
         """Clean up all capture processes. Call before app exit."""
         self._refresh_timer.stop()
         self._meter_timer.stop()
-        self._stop_capture()
+        for proc in self._all_procs:
+            try:
+                if proc.poll() is None:
+                    proc.terminate()
+            except Exception:
+                pass
+        for proc in self._all_procs:
+            try:
+                proc.wait(timeout=2)
+            except Exception:
+                pass
+        self._all_procs.clear()
+        self._capture_in_procs.clear()
+        self._capture_out_proc = None
         log.info("Controller shutdown complete")
 
     def _capture_loop_channels(
