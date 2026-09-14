@@ -24,36 +24,37 @@ from .panel import ControlPanel
 log = get_logger("tray")
 
 
-def _find_icon() -> QIcon:
-    """Return tray icon, preferring dark variant then light then app icon.
+def _find_icon(variant: str = "dark") -> QIcon:
+    """Return tray icon for the requested variant ("dark" or "light").
 
     Looks in standard XDG icon directories. Packages (deb/rpm/tarball) install:
       - dark/light icons to hicolor/128x128/apps/
-      - main icon to hicolor/512x512/apps/
+      - main icon      to hicolor/512x512/apps/
     AppImage installs them under $APPDIR/usr/share/icons/hicolor/.
     """
-    # Candidate base directories: system, user-local, and AppImage mount root
     bases: list[Path] = [
         Path("/usr/share/icons/hicolor"),
         Path.home() / ".local/share/icons/hicolor",
     ]
 
-    # If running inside an AppImage, APPDIR is set by the runtime
     appdir = os.environ.get("APPDIR")
     if appdir:
         bases.insert(0, Path(appdir) / "usr/share/icons/hicolor")
 
+    # Try requested variant first, then the other variant, then main icon
+    other = "light" if variant == "dark" else "dark"
+    candidates = [
+        ("128x128", f"pipewire-controller.{variant}.png"),
+        ("128x128", f"pipewire-controller.{other}.png"),
+        ("512x512", "pipewire-controller.png"),
+    ]
+
     for base in bases:
-        for size, name in [
-            ("128x128", "pipewire-controller.dark.png"),
-            ("128x128", "pipewire-controller.light.png"),
-            ("512x512", "pipewire-controller.png"),
-        ]:
+        for size, name in candidates:
             p = base / size / "apps" / name
             if p.exists():
                 return QIcon(str(p))
 
-    # Last resort: XDG theme lookup
     return QIcon.fromTheme("audio-card", QIcon.fromTheme("multimedia-volume-control"))
 
 
@@ -76,7 +77,8 @@ class TrayApp(QApplication):
         self._about_dialog: AboutDialog | None = None
         self._shortcuts: ShortcutManager | None = None
 
-        self._icon = _find_icon()
+        variant = self._config.get("window", {}).get("tray_icon", "dark")
+        self._icon = _find_icon(variant)
         self._tray = QSystemTrayIcon(self._icon, self)
         self._tray.setToolTip(f"PipeWire Audio Control Center {__version__}")
         self._tray.setContextMenu(self._build_tray_menu())
@@ -119,6 +121,7 @@ class TrayApp(QApplication):
 
     def _init_panel(self) -> None:
         self._panel = ControlPanel(self._config)
+        self._panel.tray_icon_changed.connect(self._on_tray_icon_changed)
         self._shortcuts = ShortcutManager(self._panel)
         self._shortcuts.setup_defaults(self._toggle_panel)
 
@@ -129,6 +132,11 @@ class TrayApp(QApplication):
 
         # Start with panel hidden; subsequent launches toggle via IPC
         QTimer.singleShot(0, self._panel.reposition)
+
+    def _on_tray_icon_changed(self, variant: str) -> None:
+        """Swap the tray icon live when the user toggles dark/light."""
+        icon = _find_icon(variant)
+        self._tray.setIcon(icon)
 
     def _toggle_panel(self) -> None:
         if self._panel is None:

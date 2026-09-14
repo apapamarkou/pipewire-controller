@@ -49,6 +49,7 @@ class PanelToolbar(QWidget):
     """Top toolbar with panel control buttons."""
 
     autoload_toggled = pyqtSignal(bool)
+    tray_icon_toggled = pyqtSignal(str)  # emits "dark" or "light"
     info_requested = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -64,22 +65,37 @@ class PanelToolbar(QWidget):
         layout.addWidget(title)
         layout.addStretch()
 
+        self._btn_tray = ToolbarButton("🌙", "Tray icon: dark  (click to switch)", checkable=True)
         self._btn_auto = ToolbarButton("⟳", "Auto-load config on startup", checkable=True)
         self._btn_info = ToolbarButton("ℹ", "System info")
 
-        for btn in (self._btn_auto, self._btn_info):
+        for btn in (self._btn_tray, self._btn_auto, self._btn_info):
             layout.addWidget(btn)
 
+        self._btn_tray.toggled.connect(self._on_tray_toggled)
         self._btn_auto.toggled.connect(self.autoload_toggled)
         self._btn_info.clicked.connect(self.info_requested)
 
         self.setStyleSheet(f"background-color: {BG_PANEL}; border-bottom: 1px solid {BORDER};")
         self.setFixedHeight(30)
 
-    def set_state(self, autoload: bool) -> None:
+    def _on_tray_toggled(self, checked: bool) -> None:
+        variant = "light" if checked else "dark"
+        self._btn_tray.setText("☀" if checked else "🌙")
+        self._btn_tray.setToolTip(f"Tray icon: {variant}  (click to switch)")
+        self.tray_icon_toggled.emit(variant)
+
+    def set_state(self, autoload: bool, tray_icon: str = "dark") -> None:
         self._btn_auto.blockSignals(True)
         self._btn_auto.setChecked(autoload)
         self._btn_auto.blockSignals(False)
+
+        self._btn_tray.blockSignals(True)
+        is_light = tray_icon == "light"
+        self._btn_tray.setChecked(is_light)
+        self._btn_tray.setText("☀" if is_light else "🌙")
+        self._btn_tray.setToolTip(f"Tray icon: {tray_icon}  (click to switch)")
+        self._btn_tray.blockSignals(False)
 
 
 class ControlPanel(QWidget):
@@ -92,6 +108,7 @@ class ControlPanel(QWidget):
     """
 
     closed = pyqtSignal()
+    tray_icon_changed = pyqtSignal(str)  # emits "dark" or "light"
 
     def __init__(self, config: dict, parent: QWidget | None = None) -> None:
         super().__init__(
@@ -127,6 +144,7 @@ class ControlPanel(QWidget):
 
         self._toolbar = PanelToolbar()
         self._toolbar.autoload_toggled.connect(self._on_autoload_toggled)
+        self._toolbar.tray_icon_toggled.connect(self._on_tray_icon_toggled)
         self._toolbar.info_requested.connect(self._on_info_requested)
         root.addWidget(self._toolbar)
 
@@ -146,6 +164,7 @@ class ControlPanel(QWidget):
 
         self._toolbar.set_state(
             autoload=self._config.get("window", {}).get("auto_load", False),
+            tray_icon=self._config.get("window", {}).get("tray_icon", "dark"),
         )
 
         self.setMouseTracking(True)
@@ -169,6 +188,10 @@ class ControlPanel(QWidget):
 
     def _on_autoload_toggled(self, autoload: bool) -> None:
         self._config.setdefault("window", {})["auto_load"] = autoload
+
+    def _on_tray_icon_toggled(self, variant: str) -> None:
+        self._config.setdefault("window", {})["tray_icon"] = variant
+        self.tray_icon_changed.emit(variant)
 
     def _on_info_requested(self) -> None:
         from .dialogs import SystemInfoDialog
