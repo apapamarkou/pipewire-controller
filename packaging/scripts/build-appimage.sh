@@ -189,4 +189,9 @@ docker run --rm --privileged \
         echo "  written: $(basename "$OUT")"
     '
 
-[ -f "$FINAL" ] && echo "✓ $FINAL" || { echo "✗ AppImage not found in output"; exit 1; }
+if [ -f "$FINAL" ]; then
+    echo "✓ $FINAL"
+else
+    echo "✗ AppImage not found in output"
+    exit 1
+fi

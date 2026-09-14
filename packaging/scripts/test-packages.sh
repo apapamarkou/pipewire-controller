@@ -57,7 +57,7 @@ fi
 # ── Tarball installer ─────────────────────────────────────────────────────────
 if [[ "$choices" == *"1"* ]]; then
     header "Tarball installer"
-    pkg="$(ls "$OUTPUT"/pipewire-controller-*-linux.tar.gz 2>/dev/null | head -1)"
+    pkg="$(find "$OUTPUT" -maxdepth 1 -name "pipewire-controller-*-linux.tar.gz" 2>/dev/null | head -1)"
     if [[ -z "$pkg" ]]; then
         warn "No tarball found in $OUTPUT — skipping"
         SKIP=$((SKIP + 1))
@@ -85,7 +85,7 @@ fi
 # ── AppImage ──────────────────────────────────────────────────────────────────
 if [[ "$choices" == *"2"* ]]; then
     header "AppImage"
-    pkg="$(ls "$OUTPUT"/PipeWireController-*.AppImage 2>/dev/null | head -1)"
+    pkg="$(find "$OUTPUT" -maxdepth 1 -name "PipeWireController-*.AppImage" 2>/dev/null | head -1)"
     if [[ -n "$pkg" ]]; then
         run_test "AppImage" "$TESTS/test-appimage.sh" "$pkg"
     else
@@ -98,7 +98,7 @@ fi
 if [[ "$choices" == *"3"* ]]; then
     header "Fedora RPMs"
     for ver in $(conf_versions "fedora-versions"); do
-        pkg="$(ls "$OUTPUT"/pipewire-controller-*.fc${ver}.noarch.rpm 2>/dev/null | head -1)"
+        pkg="$(find "$OUTPUT" -maxdepth 1 -name "pipewire-controller-*.fc${ver}.noarch.rpm" 2>/dev/null | head -1)"
         if [[ -n "$pkg" ]]; then
             run_test "Fedora $ver RPM" "$TESTS/test-fedora-rpm.sh" "$pkg" "$ver"
         else
@@ -112,7 +112,7 @@ fi
 if [[ "$choices" == *"4"* ]]; then
     header "openSUSE RPMs"
     for ver in $(conf_versions "opensuse-versions"); do
-        pkg="$(ls "$OUTPUT"/pipewire-controller-*.opensuse*.noarch.rpm 2>/dev/null | head -1)"
+        pkg="$(find "$OUTPUT" -maxdepth 1 -name "pipewire-controller-*.opensuse*.noarch.rpm" 2>/dev/null | head -1)"
         if [[ -n "$pkg" ]]; then
             run_test "openSUSE $ver RPM" "$TESTS/test-opensuse-rpm.sh" "$pkg" "$ver"
         else
@@ -126,7 +126,7 @@ fi
 if [[ "$choices" == *"5"* ]]; then
     header "Debian .debs"
     for ver in $(conf_versions "debian-versions"); do
-        pkg="$(ls "$OUTPUT"/pipewire-controller_*~${ver}.deb 2>/dev/null | head -1)"
+        pkg="$(find "$OUTPUT" -maxdepth 1 -name "pipewire-controller_*~${ver}.deb" 2>/dev/null | head -1)"
         if [[ -n "$pkg" ]]; then
             run_test "Debian $ver .deb" "$TESTS/test-deb.sh" "$pkg" "$ver"
         else
@@ -140,7 +140,7 @@ fi
 if [[ "$choices" == *"6"* ]]; then
     header "Ubuntu .debs"
     for ver in $(conf_versions "ubuntu-versions"); do
-        pkg="$(ls "$OUTPUT"/pipewire-controller_*~${ver}.deb 2>/dev/null | head -1)"
+        pkg="$(find "$OUTPUT" -maxdepth 1 -name "pipewire-controller_*~${ver}.deb" 2>/dev/null | head -1)"
         if [[ -n "$pkg" ]]; then
             run_test "Ubuntu $ver .deb" "$TESTS/test-deb.sh" "$pkg" "$ver"
         else
@@ -153,7 +153,7 @@ fi
 # ── Arch package ──────────────────────────────────────────────────────────────
 if [[ "$choices" == *"7"* ]]; then
     header "Arch package"
-    pkg="$(ls "$OUTPUT"/arch/pipewire-controller-*.pkg.tar.zst 2>/dev/null | head -1)"
+    pkg="$(find "$OUTPUT/arch" -maxdepth 1 -name "pipewire-controller-*.pkg.tar.zst" 2>/dev/null | head -1)"
     if [[ -n "$pkg" ]]; then
         run_test "Arch package" "$TESTS/test-arch-pkg.sh" "$pkg"
     else

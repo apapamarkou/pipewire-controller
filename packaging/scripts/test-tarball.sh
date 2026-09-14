@@ -18,7 +18,7 @@ warn() { echo -e "${YELLOW}⚠${NC} $*"; }
 # Find tarball
 TARBALL="${1:-}"
 if [[ -z "$TARBALL" ]]; then
-    TARBALL="$(ls "$OUTPUT"/pipewire-controller-*-linux.tar.gz 2>/dev/null | head -1)"
+    TARBALL="$(find "$OUTPUT" -maxdepth 1 -name "pipewire-controller-*-linux.tar.gz" 2>/dev/null | head -1)"
 fi
 [[ -f "$TARBALL" ]] || fail "No tarball found. Run 'make package' first."
 
@@ -49,7 +49,7 @@ trap 'rm -rf "$TMPDIR"' EXIT
 
 tar -xzf "$TARBALL" -C "$TMPDIR" --strip-components=1
 
-WHEEL="$(ls "$TMPDIR/wheels"/pipewire_controller-*.whl 2>/dev/null | head -1)"
+WHEEL="$(find "$TMPDIR/wheels" -maxdepth 1 -name "pipewire_controller-*.whl" 2>/dev/null | head -1)"
 [[ -f "$WHEEL" ]] || fail "Wheel not found after extraction"
 ok "Wheel found: $(basename "$WHEEL")"
 

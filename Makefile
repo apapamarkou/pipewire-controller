@@ -31,10 +31,12 @@ test:
 lint:
 	ruff check src/ tests/
 	black --check src/ tests/
+	shellcheck packaging/scripts/*.sh || true
 
 lint-fix:
 	ruff check --fix src/ tests/
 	black src/ tests/
+	@echo "Note: shellcheck has no auto-fix. Fix issues manually or re-run make lint."
 
 install:
 	pip3 install -e ".[dev]"
