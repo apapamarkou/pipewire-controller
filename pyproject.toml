@@ -43,8 +43,21 @@ pipewire-controller = "pipewire_controller.__main__:main"
 Homepage = "https://github.com/apapamarkou/pipewire-controller"
 Issues = "https://github.com/apapamarkou/pipewire-controller/issues"
 
+[tool.hatch.build]
+packages = ["src/pipewire_controller"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/pipewire_controller"]
+include = [
+    "src/pipewire_controller/resources",
+    "src/pipewire_controller/resources/**",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/pipewire_controller/resources",
+    "src/pipewire_controller/resources/**",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

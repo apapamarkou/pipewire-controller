@@ -26,7 +26,9 @@ printf 'PyQt6>=6.4\nnumpy>=1.24\n' > "$WHEEL_DIR/appbuild/PipeWireController"
 sed 's/^Name=.*/Name=PipeWireController/' \
     "$REPO_ROOT/packaging/specs/pipewire-controller.desktop" \
     > "$WHEEL_DIR/pipewire-controller.desktop"
-cp "$REPO_ROOT/resources/icons/pipewire-controller.png" "$WHEEL_DIR/pipewire-controller.png"
+cp "$REPO_ROOT/resources/icons/pipewire-controller.png"       "$WHEEL_DIR/pipewire-controller.png"
+cp "$REPO_ROOT/resources/icons/pipewire-controller.dark.png"  "$WHEEL_DIR/pipewire-controller.dark.png"
+cp "$REPO_ROOT/resources/icons/pipewire-controller.light.png" "$WHEEL_DIR/pipewire-controller.light.png"
 
 # Write AppRun entry point as a file (avoids quoting issues inside Docker -c string)
 cat > "$WHEEL_DIR/AppRun" << 'APPRUNEOF'
@@ -155,7 +157,17 @@ docker run --rm --privileged \
         cp /meta/AppRun "$APPDIR/AppRun"
         chmod +x "$APPDIR/AppRun"
 
-        # Step 5: bundle xcb/xkb libs for portability on older distros
+        # Step 5: install icons into standard hicolor paths inside the AppDir.
+        # The tray code checks $APPDIR/usr/share/icons/hicolor/ (via $APPDIR env var).
+        install -Dm644 /meta/pipewire-controller.png \
+            "$APPDIR/usr/share/icons/hicolor/512x512/apps/pipewire-controller.png"
+        install -Dm644 /meta/pipewire-controller.dark.png \
+            "$APPDIR/usr/share/icons/hicolor/128x128/apps/pipewire-controller.dark.png"
+        install -Dm644 /meta/pipewire-controller.light.png \
+            "$APPDIR/usr/share/icons/hicolor/128x128/apps/pipewire-controller.light.png"
+        echo "  installed icons into AppDir"
+
+        # Step 6: bundle xcb/xkb libs for portability on older distros
         LIBDIR="$APPDIR/usr/lib"
         mkdir -p "$LIBDIR"
         for lib in \

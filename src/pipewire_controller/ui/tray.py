@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -24,17 +25,35 @@ log = get_logger("tray")
 
 
 def _find_icon() -> QIcon:
-    """Return tray icon, preferring dark variant then light then installed."""
-    res = Path(__file__).parent.parent.parent.parent / "resources/icons"
-    if not res.exists():
-        res = Path(__file__).parent.parent / "resources/icons"
-    for name in ("pipewire-controller.dark.png", "pipewire-controller.light.png"):
-        p = res / name
-        if p.exists():
-            return QIcon(str(p))
-    installed = Path.home() / ".local/share/icons/hicolor/512x512/apps/pipewire-controller.png"
-    if installed.exists():
-        return QIcon(str(installed))
+    """Return tray icon, preferring dark variant then light then app icon.
+
+    Looks in standard XDG icon directories. Packages (deb/rpm/tarball) install:
+      - dark/light icons to hicolor/128x128/apps/
+      - main icon to hicolor/512x512/apps/
+    AppImage installs them under $APPDIR/usr/share/icons/hicolor/.
+    """
+    # Candidate base directories: system, user-local, and AppImage mount root
+    bases: list[Path] = [
+        Path("/usr/share/icons/hicolor"),
+        Path.home() / ".local/share/icons/hicolor",
+    ]
+
+    # If running inside an AppImage, APPDIR is set by the runtime
+    appdir = os.environ.get("APPDIR")
+    if appdir:
+        bases.insert(0, Path(appdir) / "usr/share/icons/hicolor")
+
+    for base in bases:
+        for size, name in [
+            ("128x128", "pipewire-controller.dark.png"),
+            ("128x128", "pipewire-controller.light.png"),
+            ("512x512", "pipewire-controller.png"),
+        ]:
+            p = base / size / "apps" / name
+            if p.exists():
+                return QIcon(str(p))
+
+    # Last resort: XDG theme lookup
     return QIcon.fromTheme("audio-card", QIcon.fromTheme("multimedia-volume-control"))
 
 
