@@ -10,7 +10,7 @@ audio analysis itself.
 
 from __future__ import annotations
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QInputDialog,
@@ -37,11 +37,18 @@ _OVER_STYLE = f"color: {C_ERROR}; font-size: 10px; font-weight: bold; background
 
 _BAR_HEIGHT = 70  # fixed px — prevents collapse inside QScrollArea
 _WIDGET_WIDTH = 20  # bar(12) + 4px padding each side
+_LABEL_HOLD_DB = -120.0  # below this, show "—"
+_LABEL_LAZY_MS = 3000  # ms before label drops to a lower level
 
 
 class ChannelMeterWidget(QWidget):
     """
     Compact channel meter: bar + name + level value + over indicator.
+
+    The numeric level label is "lazy": it updates immediately when the level
+    rises, but only drops to a lower value after _LABEL_LAZY_MS of no higher
+    reading (3 seconds by default).
+
     Right-click to rename.
     """
 
@@ -50,6 +57,12 @@ class ChannelMeterWidget(QWidget):
     def __init__(self, meter: ChannelMeter, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._meter = meter
+        self._displayed_db: float = _LABEL_HOLD_DB  # value currently shown
+        self._pending_db: float = _LABEL_HOLD_DB  # lower candidate waiting for timer
+        self._lazy_timer = QTimer(self)
+        self._lazy_timer.setSingleShot(True)
+        self._lazy_timer.setInterval(_LABEL_LAZY_MS)
+        self._lazy_timer.timeout.connect(self._apply_pending_db)
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -104,10 +117,30 @@ class ChannelMeterWidget(QWidget):
     def update_from_snapshot(self, snap: dict) -> None:
         self._bar.set_level(snap["peak_dbfs"], snap["peak_hold_dbfs"], snap["over"])
         db = snap["peak_dbfs"]
-        self._level_lbl.setText(f"{db:.1f}" if db > -120 else "—")
         self._over_lbl.setVisible(snap["over"])
         self._name_lbl.setText(snap["name"] or "—")
         self.setToolTip(self._make_tooltip(snap))
+        self._update_label_lazy(db)
+
+    def _update_label_lazy(self, db: float) -> None:
+        """Update the level label: immediate on rise, 3s hold before drop."""
+        if db >= self._displayed_db:
+            # Level rose or stayed — update immediately, cancel any pending drop
+            self._displayed_db = db
+            self._pending_db = db
+            self._lazy_timer.stop()
+            self._level_lbl.setText(f"{db:.1f}" if db > _LABEL_HOLD_DB else "—")
+        else:
+            # Level fell — track the new low as a candidate but don't display yet
+            self._pending_db = db
+            if not self._lazy_timer.isActive():
+                self._lazy_timer.start()
+
+    def _apply_pending_db(self) -> None:
+        """Called after the hold timeout — drop displayed value to current pending."""
+        self._displayed_db = self._pending_db
+        db = self._pending_db
+        self._level_lbl.setText(f"{db:.1f}" if db > _LABEL_HOLD_DB else "—")
 
     def mousePressEvent(self, event) -> None:
         super().mousePressEvent(event)
@@ -230,6 +263,9 @@ class MeterSection(QWidget):
             w._bar.set_level(-120.0, -120.0, False)
             w._level_lbl.setText("—")
             w._over_lbl.setVisible(False)
+            w._displayed_db = _LABEL_HOLD_DB
+            w._pending_db = _LABEL_HOLD_DB
+            w._lazy_timer.stop()
         self.clear_requested.emit()
 
 

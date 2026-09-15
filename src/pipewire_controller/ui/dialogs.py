@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 )
 
 from .. import __version__
-from ..config import delete_preset, rename_preset
+from ..config import delete_preset, rename_preset, save_preset
 from ..detection import detect_system
 from .theme import (
     BG_SECTION,
@@ -224,14 +224,16 @@ class ConfigManagerDialog(QDialog):
         self._edit_btn = QPushButton("Edit")
         self._load_btn = QPushButton("Load")
         self._delete_btn = QPushButton("Delete")
+        self._new_btn = QPushButton("New…")
         exit_btn = QPushButton("Close")
 
         self._edit_btn.clicked.connect(self._on_edit)
         self._load_btn.clicked.connect(self._on_load)
         self._delete_btn.clicked.connect(self._on_delete)
+        self._new_btn.clicked.connect(self._on_new)
         exit_btn.clicked.connect(self.accept)
 
-        for btn in (self._edit_btn, self._load_btn, self._delete_btn, exit_btn):
+        for btn in (self._new_btn, self._edit_btn, self._load_btn, self._delete_btn, exit_btn):
             right.addWidget(btn)
 
         layout.addLayout(right)
@@ -305,6 +307,81 @@ class ConfigManagerDialog(QDialog):
             return
         if delete_preset(self._config, item.text()):
             self._refresh_list()
+
+    def _on_new(self) -> None:
+        """Create a new preset, optionally duplicating the current one."""
+        from PyQt6.QtWidgets import QCheckBox, QFormLayout
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("New Configuration")
+        dialog.setMinimumWidth(320)
+        dialog.setStyleSheet(PANEL_STYLE)
+
+        form = QFormLayout()
+        name_edit = QLineEdit()
+        name_edit.setPlaceholderText("e.g. Studio 44.1kHz")
+        duplicate_cb = QCheckBox("Duplicate current settings")
+        duplicate_cb.setChecked(True)
+        form.addRow("Name:", name_edit)
+        form.addRow("", duplicate_cb)
+
+        btns = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        btns.accepted.connect(dialog.accept)
+        btns.rejected.connect(dialog.reject)
+
+        vbox = QVBoxLayout(dialog)
+        vbox.addLayout(form)
+        vbox.addWidget(btns)
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        new_name = name_edit.text().strip()
+        if not new_name:
+            return
+        if new_name in self._config.get("presets", {}):
+            # Name already exists — append a suffix
+            base, n = new_name, 2
+            while f"{base} ({n})" in self._config.get("presets", {}):
+                n += 1
+            new_name = f"{base} ({n})"
+
+        if duplicate_cb.isChecked():
+            import json
+
+            active_name = self._config.get("active_preset", "Default")
+            source = self._config.get("presets", {}).get(active_name, {})
+            new_preset = json.loads(json.dumps(source))  # deep copy
+        else:
+            new_preset = {
+                "name": "",
+                "description": "",
+                "samplerate": 48000,
+                "quantum": 1024,
+                "force_rate": True,
+                "force_quantum": True,
+                "panel_width": 420,
+                "panel_docked": True,
+                "always_on_top": False,
+                "pinned": False,
+                "auto_load": False,
+                "accordion_state": {},
+                "friendly_names": {},
+                "channel_names": {},
+                "meter_mode": "Peak",
+                "master_mode": "Stereo",
+                "master_channel_map": {},
+            }
+
+        new_preset["name"] = new_name
+        save_preset(self._config, new_preset)
+        self._refresh_list()
+        # Select the new preset in the list
+        items = self._list.findItems(new_name, Qt.MatchFlag.MatchExactly)
+        if items:
+            self._list.setCurrentItem(items[0])
 
 
 class LatencyWizardDialog(QDialog):

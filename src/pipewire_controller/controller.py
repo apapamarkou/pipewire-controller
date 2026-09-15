@@ -20,7 +20,7 @@ from PyQt6.QtCore import QTimer
 
 from .config import active_preset, save, save_preset
 from .log import get_logger
-from .metering import ChannelMeter
+from .metering import ChannelMeter, LUFSMeter, mean_square_k_weighted
 from .pipewire import pw_client
 from .pipewire.model import GraphSettings, PipeWireGraph
 from .ui.panel import ControlPanel
@@ -82,6 +82,8 @@ class AppController:
         # Audio capture state
         self._output_meters: list[ChannelMeter] = []
         self._input_meters: list[ChannelMeter] = []
+        self._lufs_meters: list[LUFSMeter] = []  # one per output channel
+        self._lufs_buffer: dict[int, list[float]] = {}  # ch_idx -> pending samples
         self._capture_out_proc: subprocess.Popen | None = None
         self._capture_out_thread: threading.Thread | None = None
         # per source node: node_id -> (proc, thread, [ChannelMeter, ...])
@@ -267,6 +269,8 @@ class AppController:
             self._output_meter_section.set_channels(output_meters)
             with self._capture_lock:
                 self._output_meters = output_meters
+                self._lufs_meters = [LUFSMeter(sample_rate=_CAPTURE_RATE) for _ in output_meters]
+                self._lufs_buffer = {i: [] for i in range(len(output_meters))}
             self._last_out_key = out_key
             self._restart_output_capture()
 
@@ -471,6 +475,26 @@ class AppController:
             for i, meter in enumerate(_meters()):
                 meter.process_block(samples[:, i])
 
+            # Accumulate LUFS blocks for output channels (400ms blocks at capture rate)
+            if direction == "out":
+                _lufs_block_size = int(0.4 * _CAPTURE_RATE)
+                with self._capture_lock:
+                    for i in range(ch_count):
+                        abs_idx = meter_offset + i
+                        if abs_idx not in self._lufs_buffer:
+                            continue
+                        self._lufs_buffer[abs_idx].extend(samples[:, i].tolist())
+                        while len(self._lufs_buffer[abs_idx]) >= _lufs_block_size:
+                            block = np.array(
+                                self._lufs_buffer[abs_idx][:_lufs_block_size], dtype=np.float32
+                            )
+                            self._lufs_buffer[abs_idx] = self._lufs_buffer[abs_idx][
+                                _lufs_block_size:
+                            ]
+                            if abs_idx < len(self._lufs_meters):
+                                ms = mean_square_k_weighted(block, _CAPTURE_RATE)
+                                self._lufs_meters[abs_idx].process_block(ms)
+
         # Process ended — reset to silence
         _reset()
 
@@ -478,13 +502,32 @@ class AppController:
         with self._capture_lock:
             out_snaps = [m.snapshot() for m in self._output_meters]
             in_snaps = [m.snapshot() for m in self._input_meters]
+            lufs_meters = list(self._lufs_meters)
+
         if out_snaps:
             self._output_meter_section.update_meters(out_snaps)
+            # Aggregate LUFS across all output channels (mean of active meters)
+            lufs_m: float | None = None
+            lufs_s: float | None = None
+            lufs_i: float | None = None
+            if lufs_meters:
+                m_vals = [v for lm in lufs_meters if (v := lm.get_momentary()) is not None]
+                s_vals = [v for lm in lufs_meters if (v := lm.get_short_term()) is not None]
+                i_vals = [v for lm in lufs_meters if (v := lm.get_integrated()) is not None]
+                if m_vals:
+                    lufs_m = max(m_vals)
+                if s_vals:
+                    lufs_s = max(s_vals)
+                if i_vals:
+                    lufs_i = max(i_vals)
             self._master_meter_section.update_levels(
                 peaks_db=[s["peak_dbfs"] for s in out_snaps],
                 rms_db=[s["rms_dbfs"] for s in out_snaps],
                 peak_holds_db=[s["peak_hold_dbfs"] for s in out_snaps],
                 overs=[s["over"] for s in out_snaps],
+                lufs_m=lufs_m,
+                lufs_s=lufs_s,
+                lufs_i=lufs_i,
             )
         if in_snaps:
             self._input_meter_section.update_meters(in_snaps)
