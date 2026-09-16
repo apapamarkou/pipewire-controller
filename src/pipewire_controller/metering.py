@@ -320,3 +320,116 @@ class LUFSMeter:
     def reset(self) -> None:
         self._ms_blocks.clear()
         self._integrated_blocks.clear()
+
+
+# ── Stereo analyzer ───────────────────────────────────────────────────────────
+
+_STEREO_WINDOW = 4096  # samples for correlation window
+_GONIODATA_SIZE = 512  # max points sent to UI per frame
+
+
+@dataclass
+class StereoSnapshot:
+    """Compact stereo measurement for GUI consumption."""
+
+    correlation: float  # -1.0 … +1.0
+    gonio_xy: np.ndarray  # shape (N, 2) float32, M on x-axis, S on y-axis
+    was_reset: bool = False  # True on the first snapshot after reset()
+
+
+class StereoAnalyzer:
+    """
+    Stateful stereo analyzer: correlation + goniometer data.
+
+    DSP runs in the audio capture thread via process_block().
+    snapshot() returns a compact StereoSnapshot for the GUI thread.
+
+    Correlation formula (Pearson over a rolling window)::
+
+        corr = sum(L*R) / sqrt(sum(L²) * sum(R²))
+
+    Goniometer uses M/S rotation::
+
+        M = (L + R) / sqrt(2)   (x-axis)
+        S = (L - R) / sqrt(2)   (y-axis)
+    """
+
+    _SQRT2 = math.sqrt(2.0)
+
+    def __init__(self, window: int = _STEREO_WINDOW) -> None:
+        self._window = window
+        self._buf_l = np.zeros(window, dtype=np.float32)
+        self._buf_r = np.zeros(window, dtype=np.float32)
+        self._write_pos = 0
+        self._filled = 0
+        # Goniometer accumulation between snapshots
+        self._gonio_acc: list[tuple[float, float]] = []
+        self._correlation: float = 0.0
+        self._was_reset: bool = True
+
+    def process_block(self, left: np.ndarray, right: np.ndarray) -> None:
+        """Feed a block of L/R samples. Call from audio thread."""
+        n = len(left)
+        if n == 0:
+            return
+        self._was_reset = False
+        # Ring-buffer fill
+        space = self._window - self._write_pos
+        if n >= space:
+            self._buf_l[self._write_pos :] = left[:space]
+            self._buf_r[self._write_pos :] = right[:space]
+            remainder = n - space
+            if remainder > 0:
+                take = min(remainder, self._window)
+                self._buf_l[:take] = left[space : space + take]
+                self._buf_r[:take] = right[space : space + take]
+                self._write_pos = take
+            else:
+                self._write_pos = 0
+        else:
+            self._buf_l[self._write_pos : self._write_pos + n] = left
+            self._buf_r[self._write_pos : self._write_pos + n] = right
+            self._write_pos += n
+        self._filled = min(self._filled + n, self._window)
+
+        # Correlation over current window
+        if self._filled >= 64:
+            buf_l = self._buf_l[: self._filled]
+            buf_r = self._buf_r[: self._filled]
+            lr = float(np.dot(buf_l.astype(np.float64), buf_r.astype(np.float64)))
+            ll = float(np.dot(buf_l.astype(np.float64), buf_l.astype(np.float64)))
+            rr = float(np.dot(buf_r.astype(np.float64), buf_r.astype(np.float64)))
+            denom = math.sqrt(ll * rr)
+            self._correlation = max(-1.0, min(1.0, lr / denom)) if denom > 1e-12 else 0.0
+
+        # Accumulate goniometer points (decimated)
+        step = max(1, n // 64)
+        l_dec = left[::step].astype(np.float64)
+        r_dec = right[::step].astype(np.float64)
+        m = (l_dec + r_dec) / self._SQRT2
+        s = (l_dec - r_dec) / self._SQRT2
+        for mx, sy in zip(m.tolist(), s.tolist()):
+            self._gonio_acc.append((mx, sy))
+        # Cap accumulation to avoid unbounded growth
+        if len(self._gonio_acc) > _GONIODATA_SIZE * 4:
+            self._gonio_acc = self._gonio_acc[-_GONIODATA_SIZE * 2 :]
+
+    def snapshot(self) -> StereoSnapshot:
+        """Return current measurements and clear goniometer accumulation."""
+        was_reset = self._was_reset
+        pts = self._gonio_acc[-_GONIODATA_SIZE:]
+        self._gonio_acc.clear()
+        if pts:
+            xy = np.array(pts, dtype=np.float32)
+        else:
+            xy = np.empty((0, 2), dtype=np.float32)
+        return StereoSnapshot(correlation=self._correlation, gonio_xy=xy, was_reset=was_reset)
+
+    def reset(self) -> None:
+        self._buf_l[:] = 0.0
+        self._buf_r[:] = 0.0
+        self._write_pos = 0
+        self._filled = 0
+        self._gonio_acc.clear()
+        self._correlation = 0.0
+        self._was_reset = True

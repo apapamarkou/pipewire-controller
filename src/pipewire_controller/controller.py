@@ -20,7 +20,7 @@ from PyQt6.QtCore import QTimer
 
 from .config import active_preset, save, save_preset
 from .log import get_logger
-from .metering import ChannelMeter, LUFSMeter, mean_square_k_weighted
+from .metering import ChannelMeter, LUFSMeter, StereoAnalyzer, mean_square_k_weighted
 from .pipewire import pw_client
 from .pipewire.model import GraphSettings, PipeWireGraph
 from .ui.panel import ControlPanel
@@ -85,6 +85,11 @@ class AppController:
         self._input_meters: list[ChannelMeter] = []
         self._lufs_meters: list[LUFSMeter] = []  # one per output channel
         self._lufs_buffer: dict[int, list[float]] = {}  # ch_idx -> pending samples
+        self._stereo_analyzer = StereoAnalyzer()
+        # Flat output-meter indices for the L and R master channel selections.
+        # -1 means "not selected". Updated from the GUI thread; read by capture threads.
+        self._stereo_l_idx: int = -1
+        self._stereo_r_idx: int = -1
         self._capture_out_proc: subprocess.Popen | None = None
         self._capture_out_thread: threading.Thread | None = None
         # per source node: node_id -> (proc, thread, [ChannelMeter, ...])
@@ -142,6 +147,7 @@ class AppController:
         channel_map = w.get("master_channel_map", {})
         if channel_map:
             self._master_meter_section.set_channel_map(channel_map)
+        self._resolve_stereo_indices()
 
     def _build_sections(self) -> None:
         # Devices / I/O
@@ -209,12 +215,46 @@ class AppController:
             lambda m: self._config.setdefault("window", {}).__setitem__("output_meter_mode", m)
         )
         self._output_meter_section.clear_requested.connect(self._on_output_clear)
-        self._master_meter_section.mode_changed.connect(
-            lambda m: self._config.setdefault("window", {}).__setitem__("master_mode", m)
-        )
-        self._master_meter_section.channel_map_changed.connect(
-            lambda cm: self._config.setdefault("window", {}).__setitem__("master_channel_map", cm)
-        )
+        self._master_meter_section.mode_changed.connect(self._on_master_mode_changed)
+        self._master_meter_section.channel_map_changed.connect(self._on_master_channel_map_changed)
+
+    def _on_master_mode_changed(self, mode: str) -> None:
+        self._config.setdefault("window", {})["master_mode"] = mode
+        self._resolve_stereo_indices()
+
+    def _on_master_channel_map_changed(self, channel_map: dict) -> None:
+        self._config.setdefault("window", {})["master_channel_map"] = channel_map
+        self._resolve_stereo_indices()
+
+    def _resolve_stereo_indices(self) -> None:
+        """
+        Resolve the flat output-meter indices for the L (combo 0) and R (combo 1)
+        master channel selections. Stores results in _stereo_l_idx / _stereo_r_idx
+        so the capture thread can pick the right columns without touching Qt.
+        Only resets the analyzer when the selected indices actually change.
+        """
+        if self._master_meter_section.current_mode != "Stereo":
+            new_l, new_r = -1, -1
+        else:
+            channel_map = self._master_meter_section.get_channel_map()
+            available = self._master_meter_section._available_outputs
+
+            def _resolve(combo_idx: int) -> int:
+                name = channel_map.get(combo_idx, "") or channel_map.get(str(combo_idx), "")
+                if not name or name == "\u2014 None \u2014":
+                    return -1
+                try:
+                    return available.index(name)
+                except ValueError:
+                    return -1
+
+            new_l = _resolve(0)
+            new_r = _resolve(1)
+
+        if new_l != self._stereo_l_idx or new_r != self._stereo_r_idx:
+            self._stereo_l_idx = new_l
+            self._stereo_r_idx = new_r
+            self._stereo_analyzer.reset()
 
     def _refresh_graph(self) -> None:
         graph = pw_client.get_graph()
@@ -287,6 +327,7 @@ class AppController:
                 self._output_meters = output_meters
                 self._lufs_meters = [LUFSMeter(sample_rate=_CAPTURE_RATE) for _ in output_meters]
                 self._lufs_buffer = {i: [] for i in range(len(output_meters))}
+            self._stereo_analyzer.reset()
             self._last_out_key = out_key
             self._restart_output_capture()
 
@@ -299,6 +340,7 @@ class AppController:
             )
         ]
         self._master_meter_section.update_available_outputs(output_channel_names)
+        self._resolve_stereo_indices()
 
     def _restart_output_capture(self) -> None:
         if self._capture_out_proc is not None:
@@ -470,6 +512,8 @@ class AppController:
             for meter in _meters():
                 meter.peak_linear = 0.0
                 meter.rms_linear = 0.0
+            if direction == "out":
+                self._stereo_analyzer.reset()
 
         while proc.poll() is None:
             data = proc.stdout.read(chunk)
@@ -490,6 +534,22 @@ class AppController:
             silent_count = 0
             for i, meter in enumerate(_meters()):
                 meter.process_block(samples[:, i])
+
+            # Feed stereo analyzer using the master-section channel selections.
+            # _stereo_l_idx / _stereo_r_idx are flat output-meter indices;
+            # translate to local column indices for this node's capture block.
+            if direction == "out":
+                l_flat = self._stereo_l_idx
+                r_flat = self._stereo_r_idx
+                l_col = l_flat - meter_offset
+                r_col = r_flat - meter_offset
+                if (
+                    l_flat >= 0
+                    and r_flat >= 0
+                    and 0 <= l_col < ch_count
+                    and 0 <= r_col < ch_count
+                ):
+                    self._stereo_analyzer.process_block(samples[:, l_col], samples[:, r_col])
 
             # Accumulate LUFS blocks for output channels (400ms blocks at capture rate)
             if direction == "out":
@@ -545,6 +605,16 @@ class AppController:
                 lufs_s=lufs_s,
                 lufs_i=lufs_i,
             )
+            # Push stereo analysis snapshot
+            if self._master_meter_section.current_mode == "Stereo":
+                stereo_snap = self._stereo_analyzer.snapshot()
+                if stereo_snap.was_reset:
+                    self._master_meter_section.update_stereo(0.0, None, clear=True)
+                else:
+                    self._master_meter_section.update_stereo(
+                        correlation=stereo_snap.correlation,
+                        gonio_xy=stereo_snap.gonio_xy,
+                    )
         if in_snaps:
             self._input_meter_section.update_meters(in_snaps)
 
@@ -556,6 +626,7 @@ class AppController:
             for lm in self._lufs_meters:
                 lm.reset()
             self._lufs_buffer = {i: [] for i in range(len(self._output_meters))}
+        self._stereo_analyzer.reset()
         self._master_meter_section.clear()
 
     def _on_default_sink_changed(self, node_id: int) -> None:

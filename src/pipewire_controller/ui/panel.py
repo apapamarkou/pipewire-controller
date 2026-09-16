@@ -56,12 +56,17 @@ class PanelToolbar(QWidget):
     info_requested = pyqtSignal()
     qpwgraph_requested = pyqtSignal()
     easyeffects_requested = pyqtSignal()
+    close_requested = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(6, 4, 6, 4)
         layout.setSpacing(4)
+
+        self._btn_close = ToolbarButton("\u00d7", "Hide panel")
+        self._btn_close.clicked.connect(self.close_requested)
+        layout.addWidget(self._btn_close)
 
         title = QLabel("PW Control")
         title.setStyleSheet(
@@ -171,6 +176,7 @@ class ControlPanel(QWidget):
         self._toolbar.info_requested.connect(self._on_info_requested)
         self._toolbar.qpwgraph_requested.connect(self._launch_qpwgraph)
         self._toolbar.easyeffects_requested.connect(self._launch_easyeffects)
+        self._toolbar.close_requested.connect(self.hide)
         root.addWidget(self._toolbar)
 
         self._scroll = QScrollArea()
@@ -365,3 +371,9 @@ class ControlPanel(QWidget):
     def closeEvent(self, event) -> None:
         event.ignore()
         self.hide()
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() == Qt.Key.Key_Escape:
+            self.hide()
+        else:
+            super().keyPressEvent(event)

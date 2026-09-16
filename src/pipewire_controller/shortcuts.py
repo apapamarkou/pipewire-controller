@@ -43,4 +43,5 @@ class ShortcutManager:
     def setup_defaults(self, toggle_fn) -> None:
         """Register default application shortcuts."""
         self.register("Ctrl+Shift+P", toggle_fn)
+        self.register("Meta+Shift+P", toggle_fn)
         self.register("Escape", self._panel.hide)
