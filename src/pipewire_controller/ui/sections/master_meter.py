@@ -64,7 +64,7 @@ class MasterMeterSection(QWidget):
         self._layout.setContentsMargins(8, 6, 8, 6)
         self._layout.setSpacing(6)
 
-        # Mode selector
+        # Mode selector row with Clear button
         mode_row = QHBoxLayout()
         mode_lbl = QLabel("Mode:")
         mode_lbl.setStyleSheet(_LABEL_STYLE)
@@ -75,6 +75,12 @@ class MasterMeterSection(QWidget):
         mode_row.addWidget(mode_lbl)
         mode_row.addWidget(self._mode_combo)
         mode_row.addStretch()
+
+        from PyQt6.QtWidgets import QPushButton
+
+        clear_btn = QPushButton("CLEAR")
+        clear_btn.clicked.connect(self.clear)
+        mode_row.addWidget(clear_btn)
         self._layout.addLayout(mode_row)
 
         # Channel mapping + meters (rebuilt on mode change)
@@ -263,3 +269,13 @@ class MasterMeterSection(QWidget):
     def channel_count(self) -> int:
         count, _ = MASTER_MODES.get(self._mode, (len(self._meter_bars), []))
         return count if self._mode != "Custom" else len(self._meter_bars)
+
+    def clear(self) -> None:
+        """Reset all meter bars and LUFS labels to idle state."""
+        for bar in self._meter_bars:
+            bar.set_level(-120.0, -120.0, False)
+        self._peak_lbl.setText("\u2014")
+        self._rms_lbl.setText("\u2014")
+        self._lufsm_lbl.setText("\u2014")
+        self._lufss_lbl.setText("\u2014")
+        self._lufsi_lbl.setText("\u2014")

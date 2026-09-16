@@ -38,10 +38,13 @@ class TestComponentStatus:
 
 class TestSystemStatus:
     def _make_status(self, pw_ok=True, wp_ok=True, jack=True):
+        _absent = ComponentStatus("", installed=False, running=None)
         return SystemStatus(
             pipewire=ComponentStatus("PipeWire", installed=pw_ok, running=pw_ok),
             wireplumber=ComponentStatus("WirePlumber", installed=wp_ok, running=wp_ok),
             pipewire_jack=ComponentStatus("PipeWire JACK", installed=jack, running=None),
+            qpwgraph=_absent,
+            easyeffects=_absent,
         )
 
     def test_pipewire_available(self):

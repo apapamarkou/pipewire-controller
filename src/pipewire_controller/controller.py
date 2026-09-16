@@ -78,6 +78,7 @@ class AppController:
         self._output_meter_section: OutputMeterSection | None = None
         self._master_meter_section: MasterMeterSection | None = None
         self._config_section: ConfigSection | None = None
+        self._tooltip_cb = None  # callable(rate, quantum, period_ms, preset_name)
 
         # Audio capture state
         self._output_meters: list[ChannelMeter] = []
@@ -105,6 +106,10 @@ class AppController:
         # Initial load
         self._refresh_graph()
         self._apply_auto_load()
+
+    def set_tooltip_callback(self, cb) -> None:
+        """Register a callable(rate, quantum, period_ms, preset_name) for tray tooltip updates."""
+        self._tooltip_cb = cb
 
     def _apply_auto_load(self) -> None:
         """Apply active preset force settings on startup if auto_load is enabled."""
@@ -203,6 +208,7 @@ class AppController:
         self._output_meter_section.mode_changed.connect(
             lambda m: self._config.setdefault("window", {}).__setitem__("output_meter_mode", m)
         )
+        self._output_meter_section.clear_requested.connect(self._on_output_clear)
         self._master_meter_section.mode_changed.connect(
             lambda m: self._config.setdefault("window", {}).__setitem__("master_mode", m)
         )
@@ -237,6 +243,16 @@ class AppController:
         self._rate_section.update_settings(settings)
         self._latency_section.update_settings(settings)
         self._update_meter_channels(graph)
+
+        # Push tooltip update to tray
+        if self._tooltip_cb is not None:
+            preset_name = self._config.get("active_preset", "Default")
+            self._tooltip_cb(
+                rate=settings.rate,
+                quantum=settings.quantum,
+                period_ms=settings.period_ms,
+                preset_name=preset_name,
+            )
 
     # ── Meter channel population + capture ───────────────────────────────────
 
@@ -534,6 +550,14 @@ class AppController:
 
     # ── Device handlers ───────────────────────────────────────────────────────
 
+    def _on_output_clear(self) -> None:
+        """Clear LUFS meters and master meter when output CLEAR is pressed."""
+        with self._capture_lock:
+            for lm in self._lufs_meters:
+                lm.reset()
+            self._lufs_buffer = {i: [] for i in range(len(self._output_meters))}
+        self._master_meter_section.clear()
+
     def _on_default_sink_changed(self, node_id: int) -> None:
         if pw_client.set_default_sink(node_id):
             log.info("Default sink set to %d", node_id)
@@ -632,9 +656,8 @@ class AppController:
         self._populate_config_section()
 
     def _on_preset_selected(self, name: str) -> None:
-        self._config["active_preset"] = name
-        preset = active_preset(self._config)
-        self._config_section.set_description(preset.get("description", ""))
+        """Auto-load the selected preset immediately."""
+        self._on_config_loaded(name)
 
     def _on_config_loaded(self, name: str) -> None:
         self._config["active_preset"] = name

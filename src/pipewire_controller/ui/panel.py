@@ -4,6 +4,9 @@
 
 from __future__ import annotations
 
+import shutil
+import subprocess
+
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QCursor
 from PyQt6.QtWidgets import (
@@ -51,6 +54,8 @@ class PanelToolbar(QWidget):
     autoload_toggled = pyqtSignal(bool)
     tray_icon_toggled = pyqtSignal(str)  # emits "dark" or "light"
     info_requested = pyqtSignal()
+    qpwgraph_requested = pyqtSignal()
+    easyeffects_requested = pyqtSignal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -65,13 +70,29 @@ class PanelToolbar(QWidget):
         layout.addWidget(title)
         layout.addStretch()
 
+        # EasyEffects button — only visible if installed
+        self._btn_ee = ToolbarButton("FX", "Open EasyEffects")
+        self._btn_ee.setVisible(shutil.which("easyeffects") is not None)
+        self._btn_ee.clicked.connect(self.easyeffects_requested)
+
+        # qpwgraph button — only visible if installed
+        self._btn_qpw = ToolbarButton("PB", "Open qpwgraph (Patch Bay)")
+        self._btn_qpw.setVisible(shutil.which("qpwgraph") is not None)
+        self._btn_qpw.clicked.connect(self.qpwgraph_requested)
+
         self._btn_tray = ToolbarButton(
             "\u25d1", "Tray icon: dark  (click to switch light)", checkable=True
         )
-        self._btn_auto = ToolbarButton("⟳", "Auto-load config on startup", checkable=True)
-        self._btn_info = ToolbarButton("ℹ", "System info")
+        self._btn_auto = ToolbarButton("\u27f3", "Auto-load config on startup", checkable=True)
+        self._btn_info = ToolbarButton("\u24d8", "System info")
 
-        for btn in (self._btn_tray, self._btn_auto, self._btn_info):
+        for btn in (
+            self._btn_ee,
+            self._btn_qpw,
+            self._btn_tray,
+            self._btn_auto,
+            self._btn_info,
+        ):
             layout.addWidget(btn)
 
         self._btn_tray.toggled.connect(self._on_tray_toggled)
@@ -148,6 +169,8 @@ class ControlPanel(QWidget):
         self._toolbar.autoload_toggled.connect(self._on_autoload_toggled)
         self._toolbar.tray_icon_toggled.connect(self._on_tray_icon_toggled)
         self._toolbar.info_requested.connect(self._on_info_requested)
+        self._toolbar.qpwgraph_requested.connect(self._launch_qpwgraph)
+        self._toolbar.easyeffects_requested.connect(self._launch_easyeffects)
         root.addWidget(self._toolbar)
 
         self._scroll = QScrollArea()
@@ -194,6 +217,18 @@ class ControlPanel(QWidget):
     def _on_tray_icon_toggled(self, variant: str) -> None:
         self._config.setdefault("window", {})["tray_icon"] = variant
         self.tray_icon_changed.emit(variant)
+
+    def _launch_qpwgraph(self) -> None:
+        try:
+            subprocess.Popen(["qpwgraph"])
+        except FileNotFoundError:
+            pass
+
+    def _launch_easyeffects(self) -> None:
+        try:
+            subprocess.Popen(["easyeffects"])
+        except FileNotFoundError:
+            pass
 
     def _on_info_requested(self) -> None:
         from .dialogs import SystemInfoDialog

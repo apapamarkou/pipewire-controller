@@ -5,6 +5,8 @@
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -16,6 +18,7 @@ from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 from .. import __version__
 from ..config import load as load_config
 from ..config import save as save_config
+from ..detection import detect_system
 from ..log import get_logger, setup_logging
 from ..shortcuts import ShortcutManager
 from .dialogs import AboutDialog, SystemInfoDialog
@@ -62,6 +65,24 @@ _SOCKET_NAME = "pipewire-controller"
 _MSG_TOGGLE = b"toggle"
 
 
+def _color_action_indicator(action, is_red: bool) -> None:
+    """Add a colored circle icon to a QAction to indicate status."""
+    from PyQt6.QtGui import QColor, QPixmap
+
+    px = QPixmap(12, 12)
+    px.fill(QColor(0, 0, 0, 0))
+    from PyQt6.QtGui import QPainter
+
+    painter = QPainter(px)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    color = QColor("#f44336") if is_red else QColor("#4caf50")
+    painter.setBrush(color)
+    painter.setPen(color)
+    painter.drawEllipse(1, 1, 10, 10)
+    painter.end()
+    action.setIcon(QIcon(px))
+
+
 class TrayApp(QApplication):
     """Main application — lives in the system tray."""
 
@@ -84,7 +105,6 @@ class TrayApp(QApplication):
         self._tray.setContextMenu(self._build_tray_menu())
         self._tray.activated.connect(self._on_tray_activated)
         self._tray.show()
-
         self._server = QLocalServer(self)
         self._server.newConnection.connect(self._on_ipc_connection)
         QLocalServer.removeServer(_SOCKET_NAME)
@@ -101,9 +121,34 @@ class TrayApp(QApplication):
         )
         show_action = menu.addAction("Show / Hide Panel")
         show_action.triggered.connect(self._toggle_panel)
+
+        # qpwgraph — only add if installed
+        if shutil.which("qpwgraph"):
+            qpw_action = menu.addAction("Open qpwgraph")
+            qpw_action.triggered.connect(self._launch_qpwgraph)
+
+        # easyeffects — only add if installed
+        if shutil.which("easyeffects"):
+            ee_action = menu.addAction("Open EasyEffects")
+            ee_action.triggered.connect(self._launch_easyeffects)
+
         menu.addSeparator()
-        status_action = menu.addAction("System Status…")
+
+        # System status with colored indicator
+        status = detect_system()
+        critical_missing = not (
+            status.pipewire.ok and status.wireplumber.ok and status.pipewire_jack.installed
+        )
+        if critical_missing:
+            status_text = "\u25cf System Status\u2026  \u26a0"
+        else:
+            status_text = "\u25cf System Status\u2026"
+
+        status_action = menu.addAction(status_text)
+        # Color the action icon via a colored circle pixmap
+        _color_action_indicator(status_action, critical_missing)
         status_action.triggered.connect(self._show_system_status)
+
         menu.addSeparator()
         about_action = menu.addAction(f"About  (v{__version__})")
         about_action.triggered.connect(self._show_about)
@@ -111,6 +156,41 @@ class TrayApp(QApplication):
         quit_action = menu.addAction("Quit")
         quit_action.triggered.connect(self.quit)
         return menu
+
+    def _refresh_tray_menu(self) -> None:
+        """Rebuild the tray context menu (call after status or tool availability changes)."""
+        self._tray.setContextMenu(self._build_tray_menu())
+
+    def update_tooltip(
+        self,
+        rate: int | None = None,
+        quantum: int | None = None,
+        period_ms: float | None = None,
+        preset_name: str | None = None,
+    ) -> None:
+        """Update the tray tooltip with current system state."""
+        lines = [f"PipeWire Audio Control Center v{__version__}"]
+        if rate is not None:
+            lines.append(f"Samplerate {rate} Hz")
+        if quantum is not None:
+            lines.append(f"Buffersize {quantum}")
+        if period_ms is not None:
+            lines.append(f"Period latency: {period_ms:.2f} ms")
+        if preset_name:
+            lines.append(f"Configuration: {preset_name}")
+        self._tray.setToolTip("\n".join(lines))
+
+    def _launch_qpwgraph(self) -> None:
+        try:
+            subprocess.Popen(["qpwgraph"])
+        except FileNotFoundError:
+            pass
+
+    def _launch_easyeffects(self) -> None:
+        try:
+            subprocess.Popen(["easyeffects"])
+        except FileNotFoundError:
+            pass
 
     def _on_ipc_connection(self) -> None:
         conn = self._server.nextPendingConnection()
@@ -129,6 +209,8 @@ class TrayApp(QApplication):
         from ..controller import AppController
 
         self._controller = AppController(self._panel, self._config)
+        # Let the controller push tooltip updates to the tray
+        self._controller.set_tooltip_callback(self.update_tooltip)
 
         # Start with panel hidden; subsequent launches toggle via IPC
         QTimer.singleShot(0, self._panel.reposition)
@@ -151,7 +233,8 @@ class TrayApp(QApplication):
         self._about_dialog.activateWindow()
 
     def _show_system_status(self) -> None:
-        dlg = SystemInfoDialog()
+        dlg = SystemInfoDialog(self._panel)
+        dlg.finished.connect(self._refresh_tray_menu)
         dlg.exec()
 
     def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:

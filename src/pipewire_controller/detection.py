@@ -45,6 +45,8 @@ class SystemStatus:
     pipewire: ComponentStatus
     wireplumber: ComponentStatus
     pipewire_jack: ComponentStatus
+    qpwgraph: ComponentStatus
+    easyeffects: ComponentStatus
 
     @property
     def pipewire_available(self) -> bool:
@@ -131,6 +133,18 @@ def detect_system() -> SystemStatus:
                 running=None,
                 note="JACK compatibility layer" if jack_installed else "Not installed",
             ),
+            qpwgraph=ComponentStatus(
+                name="qpwgraph",
+                installed=_cmd_exists("qpwgraph"),
+                running=None,
+                note="PipeWire patch bay",
+            ),
+            easyeffects=ComponentStatus(
+                name="EasyEffects",
+                installed=_cmd_exists("easyeffects"),
+                running=None,
+                note="PipeWire audio effects",
+            ),
         )
     except Exception as exc:
         log.error("System detection failed: %s", exc)
@@ -138,4 +152,6 @@ def detect_system() -> SystemStatus:
             pipewire=ComponentStatus("PipeWire", False, False),
             wireplumber=ComponentStatus("WirePlumber", False, False),
             pipewire_jack=ComponentStatus("PipeWire JACK", False, None),
+            qpwgraph=ComponentStatus("qpwgraph", False, None),
+            easyeffects=ComponentStatus("EasyEffects", False, None),
         )
