@@ -543,12 +543,7 @@ class AppController:
                 r_flat = self._stereo_r_idx
                 l_col = l_flat - meter_offset
                 r_col = r_flat - meter_offset
-                if (
-                    l_flat >= 0
-                    and r_flat >= 0
-                    and 0 <= l_col < ch_count
-                    and 0 <= r_col < ch_count
-                ):
+                if l_flat >= 0 and r_flat >= 0 and 0 <= l_col < ch_count and 0 <= r_col < ch_count:
                     self._stereo_analyzer.process_block(samples[:, l_col], samples[:, r_col])
 
             # Accumulate LUFS blocks for output channels (400ms blocks at capture rate)
