@@ -125,6 +125,10 @@ class PanelToolbar(QWidget):
         self._btn_tray.setToolTip(f"Tray icon: {tray_icon}  (click to switch)")
         self._btn_tray.blockSignals(False)
 
+    def refresh_tool_buttons(self) -> None:
+        self._btn_ee.setVisible(shutil.which("easyeffects") is not None)
+        self._btn_qpw.setVisible(shutil.which("qpwgraph") is not None)
+
 
 class ControlPanel(QWidget):
     """

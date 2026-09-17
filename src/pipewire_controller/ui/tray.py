@@ -10,8 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QTimer
-from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import QTimer, pyqtSignal
+from PyQt6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
@@ -65,26 +65,25 @@ _SOCKET_NAME = "pipewire-controller"
 _MSG_TOGGLE = b"toggle"
 
 
-def _color_action_indicator(action, is_red: bool) -> None:
-    """Add a colored circle icon to a QAction to indicate status."""
-    from PyQt6.QtGui import QColor, QPixmap
-
-    px = QPixmap(12, 12)
+def _make_status_action(menu: QMenu, color: str, label: str = "System Status…") -> object:
+    """Plain QAction with a colored dot pixmap icon."""
+    action = menu.addAction(label)
+    px = QPixmap(14, 14)
     px.fill(QColor(0, 0, 0, 0))
-    from PyQt6.QtGui import QPainter
-
-    painter = QPainter(px)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    color = QColor("#f44336") if is_red else QColor("#4caf50")
-    painter.setBrush(color)
-    painter.setPen(color)
-    painter.drawEllipse(1, 1, 10, 10)
-    painter.end()
+    p = QPainter(px)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    c = QColor(color)
+    p.setBrush(c)
+    p.setPen(c)
+    p.drawEllipse(1, 1, 12, 12)
+    p.end()
     action.setIcon(QIcon(px))
-
+    return action
 
 class TrayApp(QApplication):
     """Main application — lives in the system tray."""
+
+    _status_detected = pyqtSignal(object)
 
     def __init__(self, argv: list[str]) -> None:
         super().__init__(argv)
@@ -104,7 +103,9 @@ class TrayApp(QApplication):
         self._icon = _find_icon(variant)
         self._tray = QSystemTrayIcon(self._icon, self)
         self._tray.setToolTip(f"PipeWire Audio Control Center {__version__}")
-        self._tray.setContextMenu(self._build_tray_menu())
+        self._menu = QMenu()
+        self._menu.aboutToShow.connect(self._rebuild_tray_menu)
+        self._tray.setContextMenu(self._menu)
         self._tray.activated.connect(self._on_tray_activated)
         self._tray.show()
         self._server = QLocalServer(self)
@@ -112,66 +113,84 @@ class TrayApp(QApplication):
         QLocalServer.removeServer(_SOCKET_NAME)
         self._server.listen(_SOCKET_NAME)
 
+        self._status_detected.connect(self._apply_status)
         QTimer.singleShot(0, self._init_panel)
         QTimer.singleShot(0, self._refresh_status_bg)
         self.aboutToQuit.connect(self._on_quit)
 
-    def _build_tray_menu(self) -> QMenu:
-        menu = QMenu()
-        menu.setStyleSheet(
+    def _rebuild_tray_menu(self) -> None:
+        """Clear and repopulate the persistent tray menu (called on aboutToShow)."""
+        self._menu.clear()
+        self._menu.setStyleSheet(
             "QMenu { background: #1a1a1a; color: #e0e0e0; border: 1px solid #2d2d2d; }"
+            "QMenu::item { padding: 4px 20px 4px 8px; }"
             "QMenu::item:selected { background: #2e2e2e; }"
+            "QMenu::icon { padding-left: 4px; }"
         )
-        show_action = menu.addAction("Show / Hide Panel")
+        show_action = self._menu.addAction("Show / Hide Panel")
         show_action.triggered.connect(lambda: QTimer.singleShot(0, self._toggle_panel))
 
-        # qpwgraph — only add if installed
-        if shutil.which("qpwgraph"):
-            qpw_action = menu.addAction("Open qpwgraph")
+        qpw_installed = (
+            self._cached_status.qpwgraph.installed
+            if self._cached_status is not None
+            else bool(shutil.which("qpwgraph"))
+        )
+        if qpw_installed:
+            qpw_action = self._menu.addAction("Open qpwgraph")
             qpw_action.triggered.connect(lambda: QTimer.singleShot(0, self._launch_qpwgraph))
 
-        # easyeffects — only add if installed
-        if shutil.which("easyeffects"):
-            ee_action = menu.addAction("Open EasyEffects")
+        ee_installed = (
+            self._cached_status.easyeffects.installed
+            if self._cached_status is not None
+            else bool(shutil.which("easyeffects"))
+        )
+        if ee_installed:
+            ee_action = self._menu.addAction("Open EasyEffects")
             ee_action.triggered.connect(lambda: QTimer.singleShot(0, self._launch_easyeffects))
 
-        menu.addSeparator()
+        self._menu.addSeparator()
 
-        # Use cached status — never block the main thread here
         status = self._cached_status
-        critical_missing = status is not None and not (
-            status.pipewire.ok and status.wireplumber.ok and status.pipewire_jack.installed
-        )
-        status_text = (
-            "\u25cf System Status\u2026  \u26a0"
-            if critical_missing
-            else "\u25cf System Status\u2026"
-        )
-        status_action = menu.addAction(status_text)
-        _color_action_indicator(status_action, critical_missing)
+        if status is None:
+            dot_color = "#9e9e9e"
+            label = "System Status… (detecting)"
+        elif not (status.pipewire.ok and status.wireplumber.ok and status.pipewire_jack.installed):
+            dot_color = "#f44336"
+            label = "System Status… (check)"
+        elif not (status.qpwgraph.installed and status.easyeffects.installed):
+            dot_color = "#ff9800"
+            label = "System Status… (add ons)"
+        else:
+            dot_color = "#4caf50"
+            label = "System Status… (all set)"
+        status_action = _make_status_action(self._menu, dot_color, label)
         status_action.triggered.connect(lambda: QTimer.singleShot(0, self._show_system_status))
 
-        menu.addSeparator()
-        about_action = menu.addAction(f"About  (v{__version__})")
+        self._menu.addSeparator()
+        about_action = self._menu.addAction(f"About  (v{__version__})")
         about_action.triggered.connect(lambda: QTimer.singleShot(0, self._show_about))
-        menu.addSeparator()
-        quit_action = menu.addAction("Quit")
+        self._menu.addSeparator()
+        quit_action = self._menu.addAction("Quit")
         quit_action.triggered.connect(lambda: QTimer.singleShot(0, self.quit))
-        return menu
+
+    def _build_tray_menu(self) -> QMenu:
+        """Kept for compatibility — returns the persistent menu."""
+        return self._menu
 
     def _refresh_status_bg(self) -> None:
-        """Run detect_system() in a background thread, then rebuild the menu."""
+        """Run detect_system() in a background thread, then update cached status."""
         import threading
-
         threading.Thread(target=self._detect_and_apply, daemon=True).start()
 
     def _detect_and_apply(self) -> None:
         status = detect_system()
-        QTimer.singleShot(0, lambda: self._apply_status(status))
+        self._status_detected.emit(status)
 
     def _apply_status(self, status) -> None:
         self._cached_status = status
-        self._tray.setContextMenu(self._build_tray_menu())
+        self._rebuild_tray_menu()
+        if self._panel is not None:
+            self._panel._toolbar.refresh_tool_buttons()
 
     def update_tooltip(
         self,

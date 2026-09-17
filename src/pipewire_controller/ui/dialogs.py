@@ -275,6 +275,7 @@ class SystemInfoDialog(QDialog):
         self._loading_lbl = loading
 
         layout.addStretch()
+        layout.addSpacing(15)
         layout.addWidget(self._buttons_widget)
 
         self._status_ready.connect(self._populate)
@@ -305,7 +306,7 @@ class SystemInfoDialog(QDialog):
         for comp, key in rows:
             self._add_row(self._rows_layout, comp, key)
         self._rows_layout.addStretch()
-        self._rows_layout.addWidget(self._buttons_widget)
+        self._rows_layout.addSpacing(15)
 
     def _add_row(self, layout: QVBoxLayout, comp, key: str) -> None:
         row = QWidget()
@@ -365,14 +366,13 @@ class SystemInfoDialog(QDialog):
         fix_btn.clicked.connect(lambda checked, k=key, c=comp: self._on_fix(k, c))
 
         # Info button
-        info_btn = QPushButton("\u24d8")
-        info_btn.setFixedSize(20, 20)
+        info_btn = QPushButton("Info")
+        info_btn.setFixedSize(40, 20)
         info_btn.setStyleSheet(
             f"QPushButton {{ background: transparent; color: {TEXT_SECONDARY}; "
-            f"border: 1px solid {BORDER}; border-radius: 10px; font-size: 11px; }}"
+            f"border: 1px solid {BORDER}; border-radius: 3px; font-size: 11px; }}"
             f"QPushButton:hover {{ color: {TEXT_PRIMARY}; background: #2a2a2a; }}"
         )
-        info_btn.setToolTip(f"Show setup instructions for {comp.name}")
         info_btn.clicked.connect(lambda checked, k=key, c=comp: self._on_info(k, c))
 
         hl.addWidget(symbol)
