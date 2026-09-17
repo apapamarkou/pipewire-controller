@@ -43,8 +43,8 @@ class TestSystemStatus:
             pipewire=ComponentStatus("PipeWire", installed=pw_ok, running=pw_ok),
             wireplumber=ComponentStatus("WirePlumber", installed=wp_ok, running=wp_ok),
             pipewire_jack=ComponentStatus("PipeWire JACK", installed=jack, running=None),
-            qpwgraph=_absent,
-            easyeffects=_absent,
+            qpwgraph=ComponentStatus("qpwgraph", installed=False, running=None),
+            easyeffects=ComponentStatus("easyeffects", installed=False, running=None),
         )
 
     def test_pipewire_available(self):

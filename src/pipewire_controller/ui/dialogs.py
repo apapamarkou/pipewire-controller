@@ -295,7 +295,7 @@ class SystemInfoDialog(QDialog):
             w = item.widget()
             if w is not None and w is not self._buttons_widget:
                 w.deleteLater()
-        # Re-add rows, stretch, then buttons
+        # Re-add rows, stretch, spacing, then buttons
         rows = [
             (status.pipewire, "pipewire"),
             (status.wireplumber, "wireplumber"),
@@ -307,6 +307,7 @@ class SystemInfoDialog(QDialog):
             self._add_row(self._rows_layout, comp, key)
         self._rows_layout.addStretch()
         self._rows_layout.addSpacing(15)
+        self._rows_layout.addWidget(self._buttons_widget)
 
     def _add_row(self, layout: QVBoxLayout, comp, key: str) -> None:
         row = QWidget()
