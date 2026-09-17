@@ -250,41 +250,61 @@ class SystemInfoDialog(QDialog):
     - Info button (shows setup guide section)
     """
 
+    _status_ready = pyqtSignal(object)
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("System Status")
         self.setMinimumWidth(560)
         self.setStyleSheet(PANEL_STYLE)
         self._distro_id, _ = detect_distro()
-        self._row_widgets: dict[str, dict] = {}  # component -> {symbol, fix_btn, spinner}
+        self._row_widgets: dict[str, dict] = {}
         self._build_ui()
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setSpacing(4)
 
-        self._status = detect_system()
+        self._rows_layout = layout
+        self._buttons_widget = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        self._buttons_widget.rejected.connect(self.accept)
 
-        # Core components (always shown)
-        rows = [
-            (self._status.pipewire, "pipewire"),
-            (self._status.wireplumber, "wireplumber"),
-            (self._status.pipewire_jack, "pipewire-jack"),
-            (self._status.qpwgraph, "qpwgraph"),
-            (self._status.easyeffects, "easyeffects"),
-        ]
-        for comp, key in rows:
-            self._add_row(layout, comp, key)
+        loading = QLabel("Detecting system components…")
+        loading.setStyleSheet(f"color: {TEXT_SECONDARY}; font-size: 11px; background: transparent;")
+        layout.addWidget(loading)
+        self._loading_lbl = loading
 
         layout.addStretch()
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-        buttons.rejected.connect(self.reject)
-        buttons.accepted.connect(self.accept)
-        # Close button
-        close_btn = buttons.button(QDialogButtonBox.StandardButton.Close)
-        if close_btn:
-            close_btn.clicked.connect(self.accept)
-        layout.addWidget(buttons)
+        layout.addWidget(self._buttons_widget)
+
+        self._status_ready.connect(self._populate)
+        import threading
+        threading.Thread(target=self._detect_bg, daemon=True).start()
+
+    def _detect_bg(self) -> None:
+        status = detect_system()
+        self._status_ready.emit(status)
+
+    def _populate(self, status) -> None:
+        self._status = status
+        # Clear everything except the buttons widget
+        while self._rows_layout.count() > 0:
+            item = self._rows_layout.takeAt(0)
+            w = item.widget()
+            if w is not None and w is not self._buttons_widget:
+                w.deleteLater()
+        # Re-add rows, stretch, then buttons
+        rows = [
+            (status.pipewire, "pipewire"),
+            (status.wireplumber, "wireplumber"),
+            (status.pipewire_jack, "pipewire-jack"),
+            (status.qpwgraph, "qpwgraph"),
+            (status.easyeffects, "easyeffects"),
+        ]
+        for comp, key in rows:
+            self._add_row(self._rows_layout, comp, key)
+        self._rows_layout.addStretch()
+        self._rows_layout.addWidget(self._buttons_widget)
 
     def _add_row(self, layout: QVBoxLayout, comp, key: str) -> None:
         row = QWidget()

@@ -96,7 +96,9 @@ class TrayApp(QApplication):
         self._panel: ControlPanel | None = None
         self._controller = None
         self._about_dialog: AboutDialog | None = None
+        self._sysinfo_dialog: SystemInfoDialog | None = None
         self._shortcuts: ShortcutManager | None = None
+        self._cached_status = None  # last known SystemStatus, populated in bg thread
 
         variant = self._config.get("window", {}).get("tray_icon", "dark")
         self._icon = _find_icon(variant)
@@ -111,6 +113,7 @@ class TrayApp(QApplication):
         self._server.listen(_SOCKET_NAME)
 
         QTimer.singleShot(0, self._init_panel)
+        QTimer.singleShot(0, self._refresh_status_bg)
         self.aboutToQuit.connect(self._on_quit)
 
     def _build_tray_menu(self) -> QMenu:
@@ -120,45 +123,49 @@ class TrayApp(QApplication):
             "QMenu::item:selected { background: #2e2e2e; }"
         )
         show_action = menu.addAction("Show / Hide Panel")
-        show_action.triggered.connect(self._toggle_panel)
+        show_action.triggered.connect(lambda: QTimer.singleShot(0, self._toggle_panel))
 
         # qpwgraph — only add if installed
         if shutil.which("qpwgraph"):
             qpw_action = menu.addAction("Open qpwgraph")
-            qpw_action.triggered.connect(self._launch_qpwgraph)
+            qpw_action.triggered.connect(lambda: QTimer.singleShot(0, self._launch_qpwgraph))
 
         # easyeffects — only add if installed
         if shutil.which("easyeffects"):
             ee_action = menu.addAction("Open EasyEffects")
-            ee_action.triggered.connect(self._launch_easyeffects)
+            ee_action.triggered.connect(lambda: QTimer.singleShot(0, self._launch_easyeffects))
 
         menu.addSeparator()
 
-        # System status with colored indicator
-        status = detect_system()
-        critical_missing = not (
+        # Use cached status — never block the main thread here
+        status = self._cached_status
+        critical_missing = status is not None and not (
             status.pipewire.ok and status.wireplumber.ok and status.pipewire_jack.installed
         )
-        if critical_missing:
-            status_text = "\u25cf System Status\u2026  \u26a0"
-        else:
-            status_text = "\u25cf System Status\u2026"
-
+        status_text = "\u25cf System Status\u2026  \u26a0" if critical_missing else "\u25cf System Status\u2026"
         status_action = menu.addAction(status_text)
-        # Color the action icon via a colored circle pixmap
         _color_action_indicator(status_action, critical_missing)
-        status_action.triggered.connect(self._show_system_status)
+        status_action.triggered.connect(lambda: QTimer.singleShot(0, self._show_system_status))
 
         menu.addSeparator()
         about_action = menu.addAction(f"About  (v{__version__})")
-        about_action.triggered.connect(self._show_about)
+        about_action.triggered.connect(lambda: QTimer.singleShot(0, self._show_about))
         menu.addSeparator()
         quit_action = menu.addAction("Quit")
-        quit_action.triggered.connect(self.quit)
+        quit_action.triggered.connect(lambda: QTimer.singleShot(0, self.quit))
         return menu
 
-    def _refresh_tray_menu(self) -> None:
-        """Rebuild the tray context menu (call after status or tool availability changes)."""
+    def _refresh_status_bg(self) -> None:
+        """Run detect_system() in a background thread, then rebuild the menu."""
+        import threading
+        threading.Thread(target=self._detect_and_apply, daemon=True).start()
+
+    def _detect_and_apply(self) -> None:
+        status = detect_system()
+        QTimer.singleShot(0, lambda: self._apply_status(status))
+
+    def _apply_status(self, status) -> None:
+        self._cached_status = status
         self._tray.setContextMenu(self._build_tray_menu())
 
     def update_tooltip(
@@ -233,9 +240,18 @@ class TrayApp(QApplication):
         self._about_dialog.activateWindow()
 
     def _show_system_status(self) -> None:
-        dlg = SystemInfoDialog(self._panel)
-        dlg.finished.connect(self._refresh_tray_menu)
-        dlg.exec()
+        if self._sysinfo_dialog is not None and self._sysinfo_dialog.isVisible():
+            self._sysinfo_dialog.raise_()
+            self._sysinfo_dialog.activateWindow()
+            return
+        self._sysinfo_dialog = SystemInfoDialog()
+        self._sysinfo_dialog.finished.connect(self._refresh_status_bg)
+        self._sysinfo_dialog.show()
+        self._sysinfo_dialog.raise_()
+        self._sysinfo_dialog.activateWindow()
+
+    def _on_sysinfo_closed(self) -> None:
+        self._sysinfo_dialog = None
 
     def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         if reason in (
@@ -249,8 +265,15 @@ class TrayApp(QApplication):
         QLocalServer.removeServer(_SOCKET_NAME)
         if self._controller is not None:
             self._controller.shutdown()
+        if self._sysinfo_dialog is not None:
+            self._sysinfo_dialog.close()
+            self._sysinfo_dialog = None
+        if self._about_dialog is not None:
+            self._about_dialog.close()
+            self._about_dialog = None
         if self._panel is not None:
             self._panel.save_geometry()
+            self._panel.force_close()
         save_config(self._config)
         log.info("Application quit, config saved")
 

@@ -239,8 +239,17 @@ class ControlPanel(QWidget):
     def _on_info_requested(self) -> None:
         from .dialogs import SystemInfoDialog
 
-        dlg = SystemInfoDialog(self)
-        dlg.exec()
+        if hasattr(self, "_sysinfo_dialog") and self._sysinfo_dialog is not None and self._sysinfo_dialog.isVisible():
+            self._sysinfo_dialog.raise_()
+            self._sysinfo_dialog.activateWindow()
+            return
+        self._sysinfo_dialog = SystemInfoDialog()
+        self._sysinfo_dialog.show()
+        self._sysinfo_dialog.raise_()
+        self._sysinfo_dialog.activateWindow()
+
+    def _on_sysinfo_closed(self) -> None:
+        self._sysinfo_dialog = None
 
     def _restore_geometry(self) -> None:
         w = self._config.get("window", {}).get("width", _DEFAULT_WIDTH)
@@ -368,9 +377,17 @@ class ControlPanel(QWidget):
         super().resizeEvent(event)
         self._config.setdefault("window", {})["width"] = self.width()
 
+    def force_close(self) -> None:
+        """Accept the next close event — called during application quit."""
+        self._quitting = True
+        self.close()
+
     def closeEvent(self, event) -> None:
-        event.ignore()
-        self.hide()
+        if getattr(self, "_quitting", False):
+            event.accept()
+        else:
+            event.ignore()
+            self.hide()
 
     def keyPressEvent(self, event) -> None:
         if event.key() == Qt.Key.Key_Escape:
