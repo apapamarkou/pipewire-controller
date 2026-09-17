@@ -142,7 +142,11 @@ class TrayApp(QApplication):
         critical_missing = status is not None and not (
             status.pipewire.ok and status.wireplumber.ok and status.pipewire_jack.installed
         )
-        status_text = "\u25cf System Status\u2026  \u26a0" if critical_missing else "\u25cf System Status\u2026"
+        status_text = (
+            "\u25cf System Status\u2026  \u26a0"
+            if critical_missing
+            else "\u25cf System Status\u2026"
+        )
         status_action = menu.addAction(status_text)
         _color_action_indicator(status_action, critical_missing)
         status_action.triggered.connect(lambda: QTimer.singleShot(0, self._show_system_status))
@@ -158,6 +162,7 @@ class TrayApp(QApplication):
     def _refresh_status_bg(self) -> None:
         """Run detect_system() in a background thread, then rebuild the menu."""
         import threading
+
         threading.Thread(target=self._detect_and_apply, daemon=True).start()
 
     def _detect_and_apply(self) -> None:

@@ -279,6 +279,7 @@ class SystemInfoDialog(QDialog):
 
         self._status_ready.connect(self._populate)
         import threading
+
         threading.Thread(target=self._detect_bg, daemon=True).start()
 
     def _detect_bg(self) -> None:

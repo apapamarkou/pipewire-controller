@@ -239,7 +239,11 @@ class ControlPanel(QWidget):
     def _on_info_requested(self) -> None:
         from .dialogs import SystemInfoDialog
 
-        if hasattr(self, "_sysinfo_dialog") and self._sysinfo_dialog is not None and self._sysinfo_dialog.isVisible():
+        if (
+            hasattr(self, "_sysinfo_dialog")
+            and self._sysinfo_dialog is not None
+            and self._sysinfo_dialog.isVisible()
+        ):
             self._sysinfo_dialog.raise_()
             self._sysinfo_dialog.activateWindow()
             return
