@@ -90,9 +90,9 @@ _RECIPES: list[InstallRecipe] = [
 
     # ── Ubuntu ────────────────────────────────────────────────────────────────
     InstallRecipe("ubuntu", "qpwgraph",
-        [["SUDO", "snap", "install", "qpwgraph"]]),
+        [["SUDO", "apt-get", "install", "-y", "qpwgraph"]]),
     InstallRecipe("ubuntu", "easyeffects",
-        [["SUDO", "snap", "install", "easyeffects"]]),
+        [["SUDO", "apt-get", "install", "-y", "easyeffects"]]),
     InstallRecipe("ubuntu", "pipewire-jack", [
         ["SUDO", "apt-get", "install", "-y",
          "pipewire-jack", "pipewire-audio-client-libraries", "libspa-0.2-jack"],

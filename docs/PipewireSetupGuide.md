@@ -65,10 +65,10 @@ sudo ldconfig
 ```
 ## Pipewire Patch Bay
 ```sh
-snap install -y qpwgraph
+sudo apt install -y qpwgraph
 ```
 
 ## Pipewire Easy Effects
 ```sh
-snap install easyeffects
+sudo apt install -y easyeffects
 ```
