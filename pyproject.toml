@@ -51,12 +51,16 @@ packages = ["src/pipewire_controller"]
 include = [
     "src/pipewire_controller/resources",
     "src/pipewire_controller/resources/**",
+    "src/pipewire_controller/text",
+    "src/pipewire_controller/text/**",
 ]
 
 [tool.hatch.build.targets.sdist]
 include = [
     "src/pipewire_controller/resources",
     "src/pipewire_controller/resources/**",
+    "src/pipewire_controller/text",
+    "src/pipewire_controller/text/**",
 ]
 
 [tool.pytest.ini_options]

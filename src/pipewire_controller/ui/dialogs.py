@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import importlib.resources
 import threading
 from pathlib import Path
 
@@ -38,26 +39,84 @@ from .theme import (
     TEXT_SECONDARY,
 )
 
-# GitHub raw URL for the setup guide
+# Local fallback - look in package data first, then docs for development
+try:
+    with importlib.resources.files("pipewire_controller") as pkg_dir:
+        _GUIDE_LOCAL = pkg_dir / "text" / "PipewireSetupGuide.md"
+except Exception:
+    _GUIDE_LOCAL = Path(__file__).parent.parent.parent / "docs" / "PipewireSetupGuide.md"
+
+# GitHub raw URL for fallback
 _GUIDE_URL = (
     "https://raw.githubusercontent.com/apapamarkou/pipewire-controller"
     "/main/docs/PipewireSetupGuide.md"
 )
-# Local fallback
-_GUIDE_LOCAL = Path(__file__).parent.parent.parent.parent / "docs" / "PipewireSetupGuide.md"
 
 
 def _load_guide() -> str:
     """Load the setup guide — local file first, then GitHub."""
+    # Try package data first
+    try:
+        with importlib.resources.files("pipewire_controller") as pkg_dir:
+            guide_path = pkg_dir / "text" / "PipewireSetupGuide.md"
+            if guide_path.exists():
+                return _extract_distro_section(guide_path.read_text())
+    except Exception:
+        pass
+
+    # Fall back to local file for development
     if _GUIDE_LOCAL.exists():
-        return _GUIDE_LOCAL.read_text()
+        return _extract_distro_section(_GUIDE_LOCAL.read_text())
+
+    # Try GitHub as last resort
     try:
         import urllib.request
 
         with urllib.request.urlopen(_GUIDE_URL, timeout=5) as r:
-            return r.read().decode()
+            return _extract_distro_section(r.read().decode())
     except Exception:
         return "Could not load setup guide."
+
+
+def _extract_distro_section(content: str) -> str:
+    """Extract the section for the detected distro from the guide content."""
+    distro_id, _ = detect_distro()
+    
+    # Map distro IDs to section headers (e.g., "fedora" -> "# Fedora")
+    distro_map = {
+        "arch": "# Arch",
+        "debian": "# Debian",
+        "fedora": "# Fedora",
+        "ubuntu": "# Ubuntu",
+    }
+    
+    target_prefix = distro_map.get(distro_id, "")
+    if not target_prefix:
+        # If distro not found, return entire content
+        return content
+    
+    lines = content.split("\n")
+    result_lines = []
+    in_target_section = False
+    
+    for line in lines:
+        # Check if we hit a new top-level section (starts with #)
+        stripped = line.lstrip()
+        if stripped.startswith("#") and not stripped.startswith("##"):
+            # If we've already passed the target section, stop
+            if in_target_section:
+                break
+            # Check if this is our target section
+            if stripped.startswith(target_prefix):
+                in_target_section = True
+                result_lines.append(line)
+                continue
+        
+        # If we're in the target section, collect lines
+        if in_target_section:
+            result_lines.append(line)
+    
+    return "\n".join(result_lines).strip()
 
 
 class AboutDialog(QDialog):
