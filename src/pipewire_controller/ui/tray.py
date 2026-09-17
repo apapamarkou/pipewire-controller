@@ -80,6 +80,7 @@ def _make_status_action(menu: QMenu, color: str, label: str = "System Status…"
     action.setIcon(QIcon(px))
     return action
 
+
 class TrayApp(QApplication):
     """Main application — lives in the system tray."""
 
@@ -180,6 +181,7 @@ class TrayApp(QApplication):
     def _refresh_status_bg(self) -> None:
         """Run detect_system() in a background thread, then update cached status."""
         import threading
+
         threading.Thread(target=self._detect_and_apply, daemon=True).start()
 
     def _detect_and_apply(self) -> None:
