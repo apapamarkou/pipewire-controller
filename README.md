@@ -22,11 +22,12 @@ designed specifically for DAW and audio-production workflows.
 - **Input / output meters** — Peak and RMS with peak hold, over detection, clear
 - **Master / surround meter** — Mono, Stereo, 2.1, Quadro, 5.1, 7.1, Custom
 - **LUFS metering** — LUFS-M, LUFS-S, LUFS-I per ITU-R BS.1770-4
+- **Correlation Meter/Goniometer** - Mastering stereo phase meter.
 - **Named configurations** — save, load, edit, delete presets. Easy enable autoload on startup with a button on top of the panel
-- **Friendly names** — user-visible device and channel renaming
 - **Dark studio UI** — professional compact audio-oriented appearance
-- **Dark/Light tray icon** — easy change tray icon color with a button on top of the panel
-- **Keyboard shortcuts** — Ctrl+Shift+P to show/hide panel
+- **Dark/Light tray icon** — easy toggle between dark/light icon to match your desktop theme.
+- **Keyboard shortcuts** — Assign a shortcut in your desktop environment to the app and by calling it toggle open/close the panel.
+- **System Status utility** — View audio system status and auto-install auto-configure any missing software.
 
 ---
 
@@ -44,6 +45,10 @@ designed specifically for DAW and audio-production workflows.
 ---
 
 ## Installation
+
+### Distro specific packages
+
+Visit the latest release page and download a package for your Linux distro.
 
 ### One-command install
 
